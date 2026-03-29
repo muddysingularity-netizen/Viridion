@@ -1,0 +1,1906 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Viridion — Clean School, Green Future</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Space+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#030c06;--bg2:#071510;--bg3:#0b1f14;
+  --g1:#00c853;--g2:#00e676;--g3:#69f0ae;
+  --fg:#e8f5e9;--fg2:#a5d6a7;--fg3:#4caf50;
+  --glass:rgba(0,200,83,0.05);--glass2:rgba(0,200,83,0.1);
+  --border:rgba(0,230,118,0.15);--border2:rgba(0,230,118,0.3);
+  --shadow:0 0 40px rgba(0,200,83,0.15);
+  --glow:0 0 24px rgba(0,230,118,0.4);
+  --red:#ff5252;--yellow:#ffd740;--blue:#00b0ff;
+  --font-display:'Syne',sans-serif;--font-body:'Space Grotesk',sans-serif;
+  --radius:16px;--radius-lg:24px;
+  --easing:cubic-bezier(0.22,1,0.36,1);
+}
+[data-theme="light"]{
+  --bg:#f0faf2;--bg2:#e4f5e8;--bg3:#d4edd9;
+  --fg:#0d1f10;--fg2:#2e7d32;--fg3:#388e3c;
+  --glass:rgba(0,150,60,0.05);--glass2:rgba(0,150,60,0.1);
+  --border:rgba(0,150,60,0.18);--border2:rgba(0,150,60,0.35);
+  --shadow:0 4px 30px rgba(0,100,30,0.1);
+  --glow:0 0 20px rgba(0,180,80,0.3);
+}
+html{scroll-behavior:smooth;overflow-x:hidden}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:15px;line-height:1.6;overflow-x:hidden;cursor:none}
+
+/* ─── CURSOR ─── */
+#cursor{position:fixed;width:8px;height:8px;background:var(--g2);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);mix-blend-mode:screen;transition:width .15s,height .15s}
+#cursor-ring{position:fixed;width:32px;height:32px;border:1px solid rgba(0,230,118,.4);border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:width .25s,height .25s;mix-blend-mode:screen}
+body:has(button:hover) #cursor,body:has(a:hover) #cursor{width:16px;height:16px}
+body:has(button:hover) #cursor-ring,body:has(a:hover) #cursor-ring{width:48px;height:48px;border-color:rgba(0,230,118,.7)}
+
+/* ─── INTRO LOADER ─── */
+#intro{position:fixed;inset:0;z-index:10000;background:#030c06;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
+#intro.hidden{pointer-events:none;animation:introOut .8s var(--easing) forwards}
+@keyframes introOut{to{opacity:0;transform:scale(1.04)}}
+.intro-pollution{position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 50%,rgba(80,60,0,.6),rgba(60,20,0,.4),#030c06);animation:pollutionFade 1.5s ease forwards}
+@keyframes pollutionFade{0%{opacity:1}100%{opacity:0}}
+.intro-green{position:absolute;inset:0;background:radial-gradient(ellipse 90% 70% at 50% 50%,rgba(0,200,83,.15),transparent 70%);opacity:0;animation:greenReveal 2s ease .8s forwards}
+@keyframes greenReveal{to{opacity:1}}
+.intro-particles{position:absolute;inset:0;overflow:hidden}
+.smoke-particle{position:absolute;border-radius:50%;animation:smokeFloat linear forwards;opacity:0}
+@keyframes smokeFloat{0%{transform:translateY(0) scale(1);opacity:.5}100%{transform:translateY(-200px) scale(2);opacity:0}}
+.intro-logo{position:relative;z-index:2;font-family:var(--font-display);font-size:72px;font-weight:800;background:linear-gradient(135deg,var(--g1),var(--g3));-webkit-background-clip:text;-webkit-text-fill-color:transparent;opacity:0;animation:logoReveal .8s var(--easing) 1s forwards;text-align:center;letter-spacing:-2px}
+@keyframes logoReveal{from{opacity:0;transform:scale(.9) translateY(20px)}to{opacity:1;transform:none}}
+.intro-tagline{position:relative;z-index:2;font-size:18px;color:var(--fg2);margin-top:12px;opacity:0;animation:fadeUp .6s ease 1.5s forwards;letter-spacing:.5px}
+.intro-skip{position:absolute;bottom:40px;right:40px;z-index:3;background:var(--glass2);border:1px solid var(--border);color:var(--fg2);padding:10px 20px;border-radius:99px;font-size:13px;cursor:none;transition:all .2s}
+.intro-skip:hover{color:var(--g2)}
+.intro-progress{position:absolute;bottom:0;left:0;height:3px;background:linear-gradient(90deg,var(--g1),var(--g3));width:0;animation:progressBar 2.8s linear forwards}
+@keyframes progressBar{to{width:100%}}
+
+/* ─── LOGIN MODAL ─── */
+#loginOverlay{position:fixed;inset:0;z-index:9500;background:rgba(3,12,6,.9);backdrop-filter:blur(24px);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .4s var(--easing)}
+#loginOverlay.open{opacity:1;pointer-events:all}
+.login-modal{background:linear-gradient(160deg,rgba(11,31,20,.98),rgba(7,21,16,.99));border:1px solid var(--border2);border-radius:28px;width:100%;max-width:420px;padding:40px;position:relative;box-shadow:0 32px 80px rgba(0,0,0,.8),0 0 60px rgba(0,200,83,.08);animation:modalSlideIn .5s var(--easing)}
+@keyframes modalSlideIn{from{transform:translateY(32px) scale(.96);opacity:0}to{transform:none;opacity:1}}
+.login-glow{position:absolute;top:-60px;left:50%;transform:translateX(-50%);width:200px;height:200px;background:radial-gradient(circle,rgba(0,200,83,.15),transparent 70%);pointer-events:none}
+.login-close{position:absolute;top:18px;right:18px;background:var(--glass);border:1px solid var(--border);color:var(--fg2);width:32px;height:32px;border-radius:50%;font-size:14px;cursor:none;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.login-close:hover{background:var(--glass2);color:var(--fg)}
+.login-logo{text-align:center;margin-bottom:28px}
+.login-logo-icon{font-size:40px;margin-bottom:8px}
+.login-logo-name{font-family:var(--font-display);font-size:26px;font-weight:800;background:linear-gradient(135deg,var(--g1),var(--g3));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.login-logo-sub{font-size:12px;color:var(--fg2);margin-top:4px}
+.login-tabs{display:flex;background:var(--glass);border:1px solid var(--border);border-radius:12px;padding:4px;margin-bottom:28px;gap:4px}
+.login-tab{flex:1;background:none;border:none;color:var(--fg2);font-family:var(--font-body);font-size:13px;font-weight:500;padding:9px;border-radius:9px;cursor:none;transition:all .25s}
+.login-tab.active{background:linear-gradient(135deg,var(--g1),var(--g2));color:#030c06;font-weight:700}
+.login-form{display:none}
+.login-form.active{display:block;animation:fadeIn .3s ease}
+.form-group{margin-bottom:16px;position:relative}
+.form-group label{display:block;font-size:12px;font-weight:600;color:var(--fg2);margin-bottom:7px;letter-spacing:.5px;text-transform:uppercase}
+.login-input{width:100%;background:var(--glass);border:1px solid var(--border);color:var(--fg);padding:12px 16px;border-radius:12px;font-family:var(--font-body);font-size:14px;outline:none;cursor:text;transition:all .2s}
+.login-input:focus{border-color:var(--border2);box-shadow:0 0 0 3px rgba(0,230,118,.08)}
+.login-input::placeholder{color:rgba(165,214,167,.4)}
+.input-icon{position:absolute;right:14px;top:38px;font-size:16px;pointer-events:none}
+.login-error{background:rgba(255,82,82,.1);border:1px solid rgba(255,82,82,.3);color:#ff8a80;font-size:12px;padding:10px 14px;border-radius:10px;margin-bottom:14px;display:none}
+.login-success{background:rgba(0,200,83,.1);border:1px solid rgba(0,200,83,.3);color:var(--g3);font-size:12px;padding:10px 14px;border-radius:10px;margin-bottom:14px;display:none}
+.login-btn{width:100%;background:linear-gradient(135deg,var(--g1),var(--g2));color:#030c06;font-weight:700;font-size:15px;padding:14px;border-radius:12px;border:none;cursor:none;transition:all .25s;font-family:var(--font-body);margin-top:4px;position:relative;overflow:hidden}
+.login-btn:hover{transform:translateY(-1px);box-shadow:0 8px 28px rgba(0,200,83,.4)}
+.login-btn:active{transform:scale(.98)}
+.login-btn.loading::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.2),transparent);animation:shimmer 1s infinite}
+@keyframes shimmer{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+.divider{display:flex;align-items:center;gap:12px;margin:20px 0;color:var(--fg2);font-size:12px}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
+.social-btn{width:100%;background:var(--glass);border:1px solid var(--border);color:var(--fg);font-family:var(--font-body);font-size:13px;font-weight:500;padding:11px;border-radius:12px;cursor:none;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px}
+.social-btn:hover{background:var(--glass2);border-color:var(--border2)}
+.forgot-link{font-size:12px;color:var(--g3);cursor:none;float:right;margin-top:-4px;transition:color .2s}
+.forgot-link:hover{color:var(--g2)}
+.password-strength{height:3px;border-radius:99px;margin-top:8px;transition:all .4s;background:var(--glass2)}
+.strength-weak{background:var(--red);width:30%}
+.strength-mid{background:var(--yellow);width:65%}
+.strength-strong{background:var(--g1);width:100%}
+.avatar-row{display:flex;gap:10px;margin-bottom:8px;flex-wrap:wrap}
+.avatar-opt{width:44px;height:44px;border-radius:50%;background:var(--glass);border:2px solid var(--border);font-size:20px;display:flex;align-items:center;justify-content:center;cursor:none;transition:all .2s}
+.avatar-opt.selected,.avatar-opt:hover{border-color:var(--g2);background:var(--glass2);transform:scale(1.1)}
+
+/* ─── USER MENU ─── */
+.user-chip{display:flex;align-items:center;gap:8px;background:var(--glass2);border:1px solid var(--border2);padding:6px 14px 6px 8px;border-radius:99px;cursor:none;transition:all .2s;position:relative}
+.user-chip:hover{background:rgba(0,200,83,.15)}
+.user-chip-avatar{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--g1),var(--g2));display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.user-chip-name{font-size:13px;font-weight:600;color:var(--g2)}
+.user-dropdown{position:absolute;top:calc(100% + 8px);right:0;background:rgba(7,21,16,.98);border:1px solid var(--border2);border-radius:14px;min-width:180px;padding:8px;display:none;z-index:600;box-shadow:0 16px 48px rgba(0,0,0,.5)}
+.user-chip:hover .user-dropdown{display:block;animation:fadeIn .2s ease}
+.user-dropdown-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;font-size:13px;color:var(--fg2);cursor:none;transition:all .2s}
+.user-dropdown-item:hover{background:var(--glass2);color:var(--fg)}
+.user-dropdown-sep{height:1px;background:var(--border);margin:6px 0}
+
+/* ─── PARTICLES ─── */
+#particles{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.particle{position:absolute;border-radius:50%;animation:floatUp linear infinite;opacity:0;font-size:inherit}
+@keyframes floatUp{0%{transform:translateY(100vh) rotate(0);opacity:0}10%{opacity:.5}90%{opacity:.2}100%{transform:translateY(-10vh) rotate(720deg);opacity:0}}
+
+/* ─── NAV ─── */
+nav{position:fixed;top:0;left:0;right:0;z-index:500;padding:0 40px;height:66px;display:flex;align-items:center;justify-content:space-between;background:rgba(3,12,6,.8);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-bottom:1px solid var(--border);transition:background .3s}
+.nav-logo{font-family:var(--font-display);font-size:20px;font-weight:800;background:linear-gradient(135deg,var(--g1),var(--g3));-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-.5px;cursor:none}
+.nav-links{display:flex;gap:4px;list-style:none}
+.nav-links a{color:var(--fg2);text-decoration:none;font-size:13px;font-weight:500;padding:7px 13px;border-radius:8px;transition:all .2s;cursor:none}
+.nav-links a:hover{background:var(--glass2);color:var(--g2)}
+.nav-links a.donate-link{background:linear-gradient(135deg,rgba(0,200,83,.2),rgba(0,230,118,.15));border:1px solid var(--border2);color:var(--g2);font-weight:600}
+.nav-links a.donate-link:hover{background:linear-gradient(135deg,rgba(0,200,83,.35),rgba(0,230,118,.25));box-shadow:0 0 14px rgba(0,200,83,.25)}
+.nav-right{display:flex;align-items:center;gap:10px}
+.btn-theme{background:var(--glass);border:1px solid var(--border);color:var(--fg2);padding:7px 13px;border-radius:8px;font-size:13px;cursor:none;transition:all .2s;font-family:var(--font-body)}
+.btn-theme:hover{background:var(--glass2);color:var(--g2)}
+.coin-nav{display:flex;align-items:center;gap:6px;background:var(--glass2);border:1px solid var(--border2);padding:6px 14px;border-radius:99px;font-size:13px;font-weight:600;color:var(--g2)}
+.coin-nav .coin-anim{transition:transform .3s var(--easing)}
+.coin-nav.bump .coin-anim{animation:coinBump .3s var(--easing)}
+@keyframes coinBump{0%{transform:scale(1)}50%{transform:scale(1.4) rotate(10deg)}100%{transform:scale(1)}}
+.btn-login{background:linear-gradient(135deg,rgba(0,200,83,.2),rgba(0,230,118,.15));border:1px solid var(--border2);color:var(--g2);font-weight:600;font-size:13px;padding:7px 16px;border-radius:8px;cursor:none;transition:all .2s;font-family:var(--font-body)}
+.btn-login:hover{background:linear-gradient(135deg,rgba(0,200,83,.35),rgba(0,230,118,.25));box-shadow:0 0 14px rgba(0,200,83,.25)}
+
+/* ─── SECTIONS ─── */
+section{position:relative;z-index:1}
+
+/* ─── HERO ─── */
+#hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:100px 40px 60px;overflow:hidden}
+.hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse 90% 70% at 50% 35%,rgba(0,200,83,.1) 0%,transparent 70%),radial-gradient(ellipse 40% 40% at 20% 85%,rgba(0,230,118,.05) 0%,transparent 60%),linear-gradient(180deg,var(--bg) 0%,var(--bg2) 60%,var(--bg3) 100%);z-index:0}
+.hero-content{position:relative;z-index:2;max-width:920px}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:var(--glass2);border:1px solid var(--border2);padding:6px 16px;border-radius:20px;font-size:12px;font-weight:500;color:var(--g3);margin-bottom:28px;animation:fadeDown .8s ease both}
+.hero-badge .dot{width:6px;height:6px;background:var(--g2);border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(0,230,118,.6)}50%{box-shadow:0 0 0 8px rgba(0,230,118,0)}}
+h1.hero-title{font-family:var(--font-display);font-size:clamp(48px,7vw,92px);font-weight:800;line-height:1;letter-spacing:-2px;margin-bottom:24px;animation:fadeUp .9s ease .1s both}
+h1.hero-title .green{background:linear-gradient(135deg,var(--g1),var(--g3));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero-sub{font-size:18px;color:var(--fg2);max-width:520px;margin:0 auto 40px;line-height:1.7;animation:fadeUp .9s ease .2s both}
+.hero-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;animation:fadeUp .9s ease .3s both}
+.btn-primary{background:linear-gradient(135deg,var(--g1),var(--g2));color:#030c06;font-weight:700;font-size:14px;padding:13px 26px;border-radius:12px;border:none;cursor:none;transition:all .25s;box-shadow:0 4px 20px rgba(0,200,83,.3);font-family:var(--font-body)}
+.btn-primary:hover{transform:translateY(-2px) scale(1.03);box-shadow:0 8px 32px rgba(0,200,83,.5)}
+.btn-primary:active{transform:scale(.97)}
+.btn-ghost{background:var(--glass);border:1px solid var(--border2);color:var(--g2);font-weight:600;font-size:14px;padding:13px 26px;border-radius:12px;cursor:none;transition:all .25s;font-family:var(--font-body)}
+.btn-ghost:hover{background:var(--glass2);transform:translateY(-2px);box-shadow:var(--glow)}
+.counters{display:flex;gap:36px;justify-content:center;flex-wrap:wrap;margin-top:60px;animation:fadeUp .9s ease .5s both}
+.counter-item{text-align:center}
+.counter-num{font-family:var(--font-display);font-size:38px;font-weight:800;background:linear-gradient(135deg,var(--g1),var(--g3));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.counter-label{font-size:11px;color:var(--fg2);text-transform:uppercase;letter-spacing:1.5px;margin-top:4px}
+.counter-divider{width:1px;background:var(--border);align-self:stretch}
+.hero-cards{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-top:48px;animation:fadeUp .9s ease .6s both}
+.hero-card{background:var(--glass);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);padding:18px 22px;min-width:160px;text-align:center;transition:all .3s;cursor:none}
+.hero-card:hover{transform:translateY(-6px);border-color:var(--border2);box-shadow:var(--shadow)}
+.hero-card-icon{font-size:26px;margin-bottom:8px}
+.hero-card-title{font-size:13px;font-weight:600;color:var(--fg);margin-bottom:3px}
+.hero-card-sub{font-size:11px;color:var(--fg2)}
+
+/* ─── DECOMPOSE SECTION ─── */
+#education{padding:100px 40px;max-width:1100px;margin:0 auto}
+.decomp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:20px;margin-top:32px}
+.decomp-card{background:var(--glass);border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px 24px;text-align:center;cursor:none;transition:all .35s;position:relative;overflow:hidden}
+.decomp-card::before{content:'';position:absolute;inset:0;background:var(--glass2);opacity:0;transition:opacity .3s}
+.decomp-card:hover::before{opacity:1}
+.decomp-card:hover{transform:translateY(-8px);border-color:var(--border2);box-shadow:var(--shadow)}
+.decomp-icon{font-size:40px;margin-bottom:12px}
+.decomp-name{font-size:15px;font-weight:600;margin-bottom:6px}
+.decomp-years{font-family:var(--font-display);font-size:30px;font-weight:800;background:linear-gradient(135deg,var(--red),#ff8a65);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+.decomp-card.good .decomp-years{background:linear-gradient(135deg,var(--g1),var(--g3));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.decomp-fact{font-size:12px;color:var(--fg2);line-height:1.5}
+.decomp-bar-wrap{width:100%;height:4px;background:rgba(255,255,255,.08);border-radius:99px;margin:12px 0;overflow:hidden}
+.decomp-bar{height:4px;border-radius:99px;width:0;transition:width 1.5s var(--easing)}
+.decomp-card:not(.good) .decomp-bar{background:linear-gradient(90deg,var(--red),#ff8a65)}
+.decomp-card.good .decomp-bar{background:linear-gradient(90deg,var(--g1),var(--g3))}
+.harm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:20px;margin-top:32px}
+.harm-card{background:var(--glass);border:1px solid var(--border);border-radius:var(--radius);padding:24px;transition:all .3s;cursor:none}
+.harm-card:hover{border-color:var(--border2);transform:translateY(-4px);box-shadow:var(--shadow)}
+.harm-icon{font-size:32px;margin-bottom:12px}
+.harm-title{font-size:14px;font-weight:600;margin-bottom:8px}
+.harm-text{font-size:13px;color:var(--fg2);line-height:1.6}
+
+/* ─── SECTION HEADER ─── */
+.section-header{text-align:center;margin-bottom:56px}
+.section-tag{display:inline-block;background:var(--glass2);border:1px solid var(--border);color:var(--g3);font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;padding:5px 14px;border-radius:20px;margin-bottom:14px}
+.section-title{font-family:var(--font-display);font-size:clamp(30px,4vw,52px);font-weight:800;letter-spacing:-1px;line-height:1.1}
+.section-title .green{background:linear-gradient(135deg,var(--g1),var(--g3));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.section-sub{color:var(--fg2);font-size:16px;max-width:500px;margin:14px auto 0}
+.glass-card{background:var(--glass);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:var(--radius-lg);padding:32px;transition:all .3s}
+.glass-card:hover{border-color:var(--border2);box-shadow:var(--shadow)}
+
+/* ─── AI SCANNER ─── */
+#scanner{padding:100px 40px;max-width:1100px;margin:0 auto}
+.scanner-layout{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:start}
+.upload-zone{border:2px dashed var(--border);border-radius:var(--radius-lg);padding:40px 28px;text-align:center;transition:all .3s;cursor:none;position:relative;overflow:hidden;min-height:300px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+.upload-zone.drag,.upload-zone:hover{border-color:var(--g2);background:var(--glass2)}
+.upload-zone.scanning{border-color:var(--g2);background:var(--glass2);box-shadow:var(--glow)}
+.upload-icon{font-size:44px}
+.upload-title{font-size:17px;font-weight:600}
+.upload-sub{font-size:13px;color:var(--fg2)}
+#file-input{display:none}
+.scan-container{width:100%;border-radius:12px;overflow:hidden;position:relative;display:none}
+.scan-img{width:100%;max-height:240px;object-fit:cover;border-radius:12px;display:block}
+.scan-line{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--g2),transparent);box-shadow:0 0 14px var(--g2);animation:scanMove 1.2s ease-in-out infinite;display:none;top:0}
+@keyframes scanMove{0%{top:0;opacity:1}100%{top:100%;opacity:.3}}
+.scan-overlay{position:absolute;inset:0;background:rgba(0,200,83,.07);border-radius:12px;display:none;align-items:center;justify-content:center}
+.scan-text{color:var(--g2);font-size:12px;font-weight:600;letter-spacing:2px;animation:scanPulse 1s ease infinite;background:rgba(3,12,6,.7);padding:8px 16px;border-radius:8px;border:1px solid var(--border2)}
+@keyframes scanPulse{0%,100%{opacity:1}50%{opacity:.4}}
+.result-card{animation:scaleIn .4s var(--easing)}
+@keyframes scaleIn{from{transform:scale(.94);opacity:0}to{transform:scale(1);opacity:1}}
+.waste-type-label{font-size:11px;color:var(--fg2);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px}
+.waste-type{font-family:var(--font-display);font-size:34px;font-weight:800;margin-bottom:6px}
+.confidence-bar-wrap{background:rgba(255,255,255,.08);border-radius:99px;height:7px;margin:10px 0}
+.confidence-bar{height:7px;border-radius:99px;background:linear-gradient(90deg,var(--g1),var(--g2));width:0;transition:width 1.2s var(--easing);box-shadow:0 0 10px var(--g2)}
+.ai-chat{margin-top:18px;background:var(--glass2);border:1px solid var(--border2);border-radius:12px;padding:16px}
+.ai-avatar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.ai-avatar{width:30px;height:30px;background:linear-gradient(135deg,var(--g1),var(--g2));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.ai-name{font-size:12px;font-weight:600;color:var(--g3)}
+.ai-message{font-size:13px;color:var(--fg);line-height:1.6}
+.typing-dots{display:inline-flex;gap:3px;margin-left:4px}
+.typing-dots span{width:4px;height:4px;background:var(--g2);border-radius:50%;animation:typingDot 1.2s infinite}
+.typing-dots span:nth-child(2){animation-delay:.2s}
+.typing-dots span:nth-child(3){animation-delay:.4s}
+@keyframes typingDot{0%,100%{transform:translateY(0);opacity:.3}50%{transform:translateY(-4px);opacity:1}}
+.xp-section{margin-top:18px}
+.xp-label{display:flex;justify-content:space-between;font-size:12px;color:var(--fg2);margin-bottom:6px}
+.scan-placeholder{text-align:center;padding:36px 20px;color:var(--fg2)}
+.scan-placeholder-icon{font-size:44px;margin-bottom:14px}
+.ai-loading-text{font-size:13px;color:var(--fg2);margin-top:16px}
+
+/* ─── MAP ─── */
+#map-section{padding:100px 40px;max-width:1100px;margin:0 auto}
+.map-controls{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.map-legend{display:flex;align-items:center;gap:16px;margin-left:auto;font-size:13px;color:var(--fg2)}
+.map-legend span{display:flex;align-items:center;gap:6px}
+#leaflet-map{height:480px;border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--border);z-index:1}
+.leaflet-popup-content-wrapper{background:rgba(7,21,16,.95)!important;border:1px solid rgba(0,230,118,.3)!important;border-radius:12px!important;color:var(--fg)!important;backdrop-filter:blur(16px)!important}
+.leaflet-popup-tip{background:rgba(7,21,16,.95)!important}
+.leaflet-popup-content{font-family:var(--font-body)!important;font-size:13px!important;color:#e8f5e9!important;margin:14px 18px!important}
+.popup-title{font-weight:600;font-size:14px;margin-bottom:6px}
+.popup-status{margin-bottom:10px}
+.popup-btns{display:flex;gap:8px;margin-top:10px}
+.popup-btn{background:rgba(0,200,83,.15);border:1px solid rgba(0,230,118,.3);color:#00e676;padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-family:var(--font-body);transition:all .2s}
+.popup-btn:hover{background:rgba(0,200,83,.3)}
+
+/* ─── DASHBOARD ─── */
+#dashboard{padding:100px 40px;max-width:1100px;margin:0 auto}
+.dashboard-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:22px}
+.stat-card{text-align:center;padding:26px}
+.stat-icon{font-size:30px;margin-bottom:10px}
+.stat-num{font-family:var(--font-display);font-size:38px;font-weight:800;background:linear-gradient(135deg,var(--g1),var(--g3));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.stat-label{font-size:12px;color:var(--fg2);margin-top:4px}
+.chart-col{display:grid;grid-template-columns:2fr 1fr;gap:20px}
+.chart-wrap{height:220px;display:flex;align-items:flex-end;gap:8px;padding:20px 20px 36px}
+.bar{flex:1;background:linear-gradient(180deg,var(--g2),var(--g1));border-radius:6px 6px 0 0;transition:height .8s var(--easing);position:relative;min-height:4px;cursor:none}
+.bar:hover{filter:brightness(1.2)}
+.bar-label{position:absolute;bottom:-22px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--fg2);white-space:nowrap}
+.bar-val{position:absolute;top:-22px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--g2);font-weight:600;opacity:0;transition:opacity .2s;white-space:nowrap}
+.bar:hover .bar-val{opacity:1}
+.sci-meter{text-align:center;padding:28px}
+.sci-circle{position:relative;width:160px;height:160px;margin:0 auto 16px}
+.sci-svg{width:100%;height:100%;transform:rotate(-90deg)}
+.sci-track{fill:none;stroke:var(--glass2);stroke-width:12}
+.sci-progress{fill:none;stroke:url(#sciGrad);stroke-width:12;stroke-linecap:round;stroke-dasharray:452;stroke-dashoffset:452;transition:stroke-dashoffset 1.5s var(--easing)}
+.sci-value{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.sci-num{font-family:var(--font-display);font-size:32px;font-weight:800;color:var(--g2)}
+.sci-label-text{font-size:10px;color:var(--fg2);text-transform:uppercase;letter-spacing:1px}
+.slider-wrap{padding:20px 28px}
+.slider-label{display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px}
+.slider-label span:last-child{color:var(--g2);font-weight:600}
+input[type=range]{width:100%;-webkit-appearance:none;height:5px;border-radius:99px;background:var(--glass2);outline:none;cursor:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:linear-gradient(135deg,var(--g1),var(--g2));box-shadow:0 0 10px rgba(0,200,83,.5);cursor:none}
+.sim-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:16px}
+.sim-box{padding:14px;background:var(--glass2);border-radius:12px;text-align:center}
+.sim-num{font-family:var(--font-display);font-size:22px;font-weight:700}
+.sim-box-label{font-size:11px;color:var(--fg2);margin-top:3px}
+
+/* ─── COMMUNITY ─── */
+#community{padding:100px 40px;max-width:1100px;margin:0 auto}
+.community-tabs{display:flex;gap:4px;background:var(--glass);border:1px solid var(--border);border-radius:12px;padding:4px;margin-bottom:28px;width:fit-content}
+.comm-tab{background:none;border:none;color:var(--fg2);font-size:13px;font-weight:500;padding:9px 20px;border-radius:9px;cursor:none;transition:all .25s;font-family:var(--font-body)}
+.comm-tab.active{background:linear-gradient(135deg,var(--g1),var(--g2));color:#030c06;font-weight:700}
+.tab-panel{display:none}
+.tab-panel.active{display:block;animation:fadeIn .3s ease}
+.add-post-form .form-input{width:100%;background:var(--glass);border:1px solid var(--border);color:var(--fg);padding:14px 18px;border-radius:12px;font-family:var(--font-body);font-size:14px;resize:none;transition:border .2s;outline:none;cursor:none}
+.add-post-form .form-input:focus{border-color:var(--border2)}
+.form-row{display:flex;gap:10px;margin-top:12px}
+.image-upload-btn{background:var(--glass);border:1px solid var(--border);color:var(--fg2);font-size:13px;padding:10px 18px;border-radius:10px;cursor:none;transition:all .2s;font-family:var(--font-body)}
+.image-upload-btn:hover{border-color:var(--border2);color:var(--g2)}
+.posts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px}
+.post-card{overflow:hidden;cursor:none;transition:all .3s}
+.post-card:hover{transform:translateY(-4px);box-shadow:var(--shadow)}
+.post-img-wrap{width:100%;height:170px;border-radius:10px;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:44px;color:var(--g3);margin-bottom:14px;overflow:hidden}
+.post-img-wrap img{width:100%;height:100%;object-fit:cover}
+.post-author{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.post-avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--g1),var(--g3));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#030c06;flex-shrink:0}
+.post-name{font-size:13px;font-weight:600}
+.post-time{font-size:11px;color:var(--fg2)}
+.post-text{font-size:13px;color:var(--fg2);line-height:1.6;margin-bottom:14px}
+.post-actions{display:flex;gap:14px}
+.post-btn{background:none;border:none;color:var(--fg2);font-size:12px;cursor:none;display:flex;align-items:center;gap:5px;transition:color .2s;padding:0;font-family:var(--font-body)}
+.post-btn:hover{color:var(--g2)}
+.post-btn.liked{color:var(--red)}
+.heart-anim{display:inline-block}
+.liked .heart-anim{animation:heartPop .3s ease}
+@keyframes heartPop{0%{transform:scale(1)}50%{transform:scale(1.5)}100%{transform:scale(1)}}
+
+/* ─── DONATION ─── */
+#donation{padding:100px 40px;max-width:960px;margin:0 auto;text-align:center}
+.donation-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:36px}
+.donation-step{background:var(--glass);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px}
+.donation-step-title{font-size:13px;font-weight:600;margin-bottom:14px;color:var(--fg2);text-transform:uppercase;letter-spacing:1px}
+.amount-btns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.amount-btn{background:var(--glass);border:1px solid var(--border);color:var(--fg);font-family:var(--font-display);font-size:18px;font-weight:700;padding:13px 20px;border-radius:10px;cursor:none;transition:all .2s;flex:1;min-width:60px}
+.amount-btn.active,.amount-btn:hover{background:linear-gradient(135deg,var(--g1),var(--g2));color:#030c06;border-color:transparent}
+.dest-btns{display:flex;flex-direction:column;gap:8px}
+.dest-btn{background:var(--glass);border:1px solid var(--border);color:var(--fg2);padding:10px 14px;border-radius:10px;font-size:13px;cursor:none;transition:all .2s;text-align:left;font-family:var(--font-body)}
+.dest-btn.active,.dest-btn:hover{border-color:var(--border2);color:var(--g2);background:var(--glass2)}
+.purpose-btns{display:flex;flex-direction:column;gap:8px}
+.purpose-btn{background:var(--glass);border:1px solid var(--border);color:var(--fg2);padding:10px 14px;border-radius:10px;font-size:13px;cursor:none;transition:all .2s;text-align:left;font-family:var(--font-body)}
+.purpose-btn.active,.purpose-btn:hover{border-color:var(--border2);color:var(--g2);background:var(--glass2)}
+.impact-visualizer{margin-top:28px;background:var(--glass2);border:1px solid var(--border2);border-radius:var(--radius-lg);padding:28px;text-align:left}
+.impact-title{font-size:13px;font-weight:600;color:var(--fg2);margin-bottom:14px;text-transform:uppercase;letter-spacing:1px}
+.impact-text{font-size:15px;font-weight:600;color:var(--g2);margin-bottom:16px}
+.impact-bar-wrap{background:rgba(255,255,255,.06);border-radius:99px;height:10px;overflow:hidden}
+.impact-bar{height:100%;background:linear-gradient(90deg,var(--g1),var(--g2));width:30%;border-radius:99px;transition:width 1s var(--easing);box-shadow:0 0 14px rgba(0,200,83,.4)}
+.donate-btn-wrap{margin-top:20px}
+.coins-anim{position:fixed;pointer-events:none;z-index:8000;display:flex;flex-direction:column;align-items:center;animation:coinsFlow 1.2s var(--easing) forwards}
+@keyframes coinsFlow{0%{opacity:0;transform:translateY(0) scale(.5)}20%{opacity:1;transform:translateY(-20px) scale(1)}80%{opacity:1;transform:translateY(-80px) scale(1)}100%{opacity:0;transform:translateY(-120px) scale(.8)}}
+
+/* ─── SHOP ─── */
+#shop{padding:100px 40px;max-width:1100px;margin:0 auto}
+.wallet{display:inline-flex;align-items:center;gap:10px;background:var(--glass2);border:1px solid var(--border2);padding:11px 22px;border-radius:99px;margin-bottom:36px;font-size:15px;font-weight:600;color:var(--g2)}
+.shop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:18px}
+.shop-item{text-align:center;padding:26px 18px;position:relative;overflow:hidden;cursor:none}
+.shop-item.affordable::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 50% 0%,rgba(0,200,83,.08),transparent 70%);pointer-events:none}
+.shop-emoji{font-size:44px;margin-bottom:10px;transition:transform .3s}
+.shop-item:hover .shop-emoji{transform:scale(1.15) rotate(5deg)}
+.shop-name{font-size:13px;font-weight:600;margin-bottom:4px}
+.shop-cost{font-size:12px;color:var(--g3);margin-bottom:14px}
+.shop-btn{background:var(--glass2);border:1px solid var(--border);color:var(--fg2);font-size:12px;padding:8px 18px;border-radius:8px;cursor:none;transition:all .2s;font-family:var(--font-body)}
+.shop-item.affordable .shop-btn{background:linear-gradient(135deg,var(--g1),var(--g2));color:#030c06;font-weight:700;border:none}
+.shop-item.affordable .shop-btn:hover{box-shadow:var(--glow);transform:scale(1.05)}
+
+/* ─── STATUS ─── */
+#status{padding:80px 40px;max-width:1100px;margin:0 auto}
+.status-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.status-card{padding:32px}
+.status-icon-big{font-size:44px;margin-bottom:14px}
+.status-title-h{font-family:var(--font-display);font-size:22px;font-weight:700;margin-bottom:10px}
+.status-text{font-size:13px;color:var(--fg2);line-height:1.8;margin-bottom:18px}
+.status-stat{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}
+.status-num{font-family:var(--font-display);font-size:28px;font-weight:800;color:var(--red)}
+.status-num.g{color:var(--g2)}
+.status-lbl{font-size:12px;color:var(--fg2)}
+
+/* ─── NOTIFICATIONS ─── */
+.reward-popup{position:fixed;top:80px;right:24px;background:linear-gradient(135deg,var(--g1),var(--g2));color:#030c06;font-weight:700;font-size:13px;padding:12px 20px;border-radius:12px;z-index:800;transform:translateY(-20px);opacity:0;transition:all .4s;pointer-events:none;box-shadow:0 8px 28px rgba(0,200,83,.5)}
+.reward-popup.show{transform:translateY(0);opacity:1}
+.notif-stack{position:fixed;top:78px;right:24px;z-index:900;display:flex;flex-direction:column;gap:7px}
+.notif{background:rgba(7,21,16,.96);border:1px solid var(--border2);backdrop-filter:blur(16px);border-radius:11px;padding:11px 16px;font-size:13px;font-weight:500;color:var(--g2);transform:translateX(120%);transition:transform .4s var(--easing);pointer-events:none;max-width:260px}
+.notif.show{transform:translateX(0)}
+
+/* ─── CHAT BUTTON ─── */
+#chatBtn{position:fixed;bottom:28px;right:28px;z-index:800;background:linear-gradient(135deg,var(--g1),var(--g2));color:#040d08;font-weight:700;font-size:13px;padding:13px 20px;border-radius:28px;cursor:none;display:flex;align-items:center;gap:8px;box-shadow:0 4px 28px rgba(0,200,83,.5);transition:all .25s;border:none;font-family:var(--font-body)}
+#chatBtn:hover{transform:scale(1.06);box-shadow:0 6px 36px rgba(0,200,83,.65)}
+#chatBtnIcon{font-size:18px;animation:chatBob 2.5s ease infinite}
+@keyframes chatBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+.chat-unread{background:#ff5252;color:#fff;font-size:10px;font-weight:800;border-radius:99px;padding:2px 7px;margin-left:2px;animation:pulse 2s infinite}
+
+/* ─── CHAT PANEL — IMPROVED ─── */
+#chatPanel{position:fixed;bottom:90px;right:28px;width:380px;max-height:600px;z-index:850;display:flex;flex-direction:column;border-radius:24px;overflow:hidden;border:1px solid var(--border2);box-shadow:0 24px 80px rgba(0,0,0,.7),0 0 0 1px rgba(0,230,118,.06),inset 0 1px 0 rgba(0,230,118,.1);background:rgba(5,14,8,.97);backdrop-filter:blur(32px);transform:translateY(24px) scale(.94);opacity:0;pointer-events:none;transition:all .35s var(--easing)}
+#chatPanel.open{transform:translateY(0) scale(1);opacity:1;pointer-events:all}
+.chat-header{display:flex;align-items:center;gap:12px;padding:18px 20px;background:linear-gradient(135deg,rgba(0,200,83,.2),rgba(0,230,118,.08));border-bottom:1px solid var(--border);flex-shrink:0;position:relative;overflow:hidden}
+.chat-header::before{content:'';position:absolute;top:-30px;right:-30px;width:100px;height:100px;background:radial-gradient(circle,rgba(0,230,118,.15),transparent 70%);pointer-events:none}
+.chat-header-avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--g1),var(--g2));display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;box-shadow:0 0 18px rgba(0,200,83,.45)}
+.chat-header-info{flex:1}
+.chat-header-name{font-size:15px;font-weight:700;color:var(--fg)}
+.chat-header-status{font-size:11px;color:var(--g3);display:flex;align-items:center;gap:5px;margin-top:2px}
+.chat-status-dot{width:6px;height:6px;background:var(--g2);border-radius:50%;animation:pulse 2s infinite}
+.chat-header-actions{display:flex;gap:6px}
+.chat-action-btn{background:rgba(0,200,83,.1);border:1px solid rgba(0,230,118,.2);color:var(--fg2);font-size:12px;padding:5px 10px;border-radius:8px;cursor:none;transition:all .2s;font-family:var(--font-body)}
+.chat-action-btn:hover{background:rgba(0,200,83,.2);color:var(--g2)}
+.chat-close{background:none;border:none;color:var(--fg2);font-size:18px;cursor:none;padding:0;line-height:1;transition:color .2s;margin-left:4px}
+.chat-close:hover{color:var(--fg)}
+
+/* Chat mode tabs */
+.chat-mode-bar{display:flex;gap:4px;padding:10px 12px;border-bottom:1px solid var(--border);background:rgba(0,0,0,.2);flex-shrink:0}
+.chat-mode-btn{flex:1;background:none;border:none;color:var(--fg2);font-size:11px;font-weight:500;padding:6px 8px;border-radius:8px;cursor:none;transition:all .2s;font-family:var(--font-body);letter-spacing:.3px}
+.chat-mode-btn.active{background:var(--glass2);color:var(--g2);border:1px solid var(--border)}
+
+.chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;scroll-behavior:smooth}
+.chat-messages::-webkit-scrollbar{width:3px}
+.chat-messages::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
+.chat-msg{display:flex;gap:8px;align-items:flex-end;animation:msgIn .3s var(--easing)}
+@keyframes msgIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.chat-msg.user{flex-direction:row-reverse}
+.msg-avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--g1),var(--g2));display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;box-shadow:0 0 10px rgba(0,200,83,.3)}
+.msg-avatar.user-av{background:linear-gradient(135deg,#00b0ff,#0091ea);box-shadow:0 0 10px rgba(0,176,255,.3)}
+.msg-content{max-width:80%}
+.msg-bubble{padding:11px 15px;border-radius:18px;font-size:13px;line-height:1.6}
+.chat-msg:not(.user) .msg-bubble{background:rgba(0,200,83,.08);border:1px solid rgba(0,230,118,.15);color:var(--fg);border-bottom-left-radius:4px}
+.chat-msg.user .msg-bubble{background:linear-gradient(135deg,rgba(0,200,83,.25),rgba(0,230,118,.15));border:1px solid rgba(0,230,118,.25);color:var(--fg);border-bottom-right-radius:4px}
+.msg-time{font-size:10px;color:var(--fg2);margin-top:4px;opacity:.6}
+.chat-msg.user .msg-time{text-align:right}
+
+/* Suggestions */
+.chat-suggestions{display:flex;flex-wrap:wrap;gap:6px;padding:8px 14px 6px;border-top:1px solid rgba(0,230,118,.07)}
+.chat-suggestion{background:rgba(0,200,83,.07);border:1px solid rgba(0,230,118,.15);color:var(--g3);font-size:11px;padding:5px 12px;border-radius:99px;cursor:none;transition:all .2s;font-family:var(--font-body);white-space:nowrap}
+.chat-suggestion:hover{background:var(--glass2);border-color:var(--border2);color:var(--g2);transform:translateY(-1px)}
+
+/* Quick tools */
+.chat-quick-tools{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px 14px;border-top:1px solid rgba(0,230,118,.07)}
+.quick-tool{background:rgba(0,200,83,.06);border:1px solid rgba(0,230,118,.12);color:var(--fg2);font-size:11px;padding:8px 10px;border-radius:10px;cursor:none;transition:all .2s;font-family:var(--font-body);text-align:left;display:flex;align-items:center;gap:6px}
+.quick-tool:hover{background:var(--glass2);border-color:var(--border);color:var(--fg)}
+
+.chat-input-row{display:flex;align-items:center;gap:8px;padding:12px 14px;border-top:1px solid var(--border);flex-shrink:0;background:rgba(3,12,6,.5)}
+#chatInput{flex:1;background:rgba(0,200,83,.05);border:1px solid var(--border);color:var(--fg);padding:10px 14px;border-radius:14px;font-family:var(--font-body);font-size:13px;outline:none;cursor:text;transition:all .2s}
+#chatInput:focus{border-color:var(--border2);background:rgba(0,200,83,.08)}
+#chatInput::placeholder{color:rgba(165,214,167,.35)}
+.chat-input-btns{display:flex;gap:6px;flex-shrink:0}
+.chat-attach-btn{width:36px;height:36px;border-radius:50%;background:var(--glass);border:1px solid var(--border);color:var(--fg2);font-size:14px;cursor:none;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.chat-attach-btn:hover{background:var(--glass2);color:var(--g2)}
+#chatSendBtn{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--g1),var(--g2));border:none;color:#030c06;font-size:15px;cursor:none;transition:all .2s;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+#chatSendBtn:hover{transform:scale(1.1);box-shadow:0 0 16px rgba(0,200,83,.5)}
+
+/* Source chips in messages */
+.msg-source{display:inline-flex;align-items:center;gap:4px;background:rgba(0,200,83,.1);border:1px solid rgba(0,230,118,.2);color:var(--g3);font-size:10px;padding:2px 8px;border-radius:99px;margin-top:6px}
+
+/* ─── FOOTER ─── */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:44px 40px;text-align:center;color:var(--fg2);font-size:13px}
+.footer-logo{font-family:var(--font-display);font-size:26px;font-weight:800;background:linear-gradient(135deg,var(--g1),var(--g3));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:10px}
+
+/* ─── REVEAL ─── */
+.reveal{opacity:0;transform:translateY(28px);transition:opacity .7s ease,transform .7s ease}
+.reveal.visible{opacity:1;transform:none}
+
+/* ─── ANIMATIONS ─── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+@keyframes fadeDown{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+/* ─── RESPONSIVE ─── */
+@media(max-width:768px){
+  nav{padding:0 20px}.nav-links{display:none}
+  #hero,#scanner,#map-section,#dashboard,#community,#shop,#status,#donation,#education{padding:80px 20px}
+  .scanner-layout,.dashboard-grid,.status-grid,.donation-steps{grid-template-columns:1fr}
+  .chart-col{grid-template-columns:1fr}
+  h1.hero-title{font-size:clamp(36px,10vw,60px)}
+  .counters{gap:20px}
+  #chatPanel{width:calc(100vw - 32px);right:16px;bottom:80px}
+  .login-modal{margin:20px}
+}
+</style>
+</head>
+<body>
+
+<!-- CURSOR -->
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+
+<!-- INTRO ANIMATION -->
+<div id="intro">
+  <div class="intro-pollution"></div>
+  <div class="intro-green"></div>
+  <div class="intro-particles" id="introParticles"></div>
+  <div style="position:relative;z-index:2;text-align:center">
+    <div style="font-size:64px;margin-bottom:16px;opacity:0;animation:logoReveal .8s ease .8s forwards">🌿</div>
+    <div class="intro-logo">Viridion</div>
+    <div class="intro-tagline">Transforming Waste into Impact</div>
+  </div>
+  <button class="intro-skip" onclick="skipIntro()">Skip →</button>
+  <div class="intro-progress"></div>
+</div>
+
+<!-- LOGIN MODAL -->
+<div id="loginOverlay">
+  <div class="login-modal">
+    <div class="login-glow"></div>
+    <button class="login-close" onclick="closeLogin()">✕</button>
+    <div class="login-logo">
+      <div class="login-logo-icon">🌿</div>
+      <div class="login-logo-name">Viridion</div>
+      <div class="login-logo-sub">Join the green revolution</div>
+    </div>
+    <div class="login-tabs">
+      <button class="login-tab active" onclick="switchLoginTab('login')">Sign In</button>
+      <button class="login-tab" onclick="switchLoginTab('signup')">Create Account</button>
+    </div>
+
+    <!-- LOGIN FORM -->
+    <div class="login-form active" id="loginForm">
+      <div class="login-error" id="loginError"></div>
+      <div class="form-group">
+        <label>Email</label>
+        <input class="login-input" id="loginEmail" type="email" placeholder="your@email.com">
+        <span class="input-icon">📧</span>
+      </div>
+      <div class="form-group">
+        <label>Password <span class="forgot-link" onclick="showForgot()">Forgot?</span></label>
+        <input class="login-input" id="loginPassword" type="password" placeholder="••••••••">
+        <span class="input-icon">🔒</span>
+      </div>
+      <button class="login-btn" id="loginSubmitBtn" onclick="doLogin()">Sign In to Viridion 🌿</button>
+      <div class="divider">or continue with</div>
+      <button class="social-btn" onclick="doSocialLogin('Google')">🌐 Continue with Google</button>
+      <button class="social-btn" onclick="doSocialLogin('GitHub')">⚡ Continue with GitHub</button>
+    </div>
+
+    <!-- SIGNUP FORM -->
+    <div class="login-form" id="signupForm">
+      <div class="login-error" id="signupError"></div>
+      <div class="login-success" id="signupSuccess"></div>
+      <div class="form-group">
+        <label>Display Name</label>
+        <input class="login-input" id="signupName" type="text" placeholder="EcoHero123">
+        <span class="input-icon">👤</span>
+      </div>
+      <div class="form-group">
+        <label>Choose Avatar</label>
+        <div class="avatar-row" id="avatarRow">
+          <div class="avatar-opt selected" data-av="🌿" onclick="selectAvatar(this)">🌿</div>
+          <div class="avatar-opt" data-av="🌱" onclick="selectAvatar(this)">🌱</div>
+          <div class="avatar-opt" data-av="♻️" onclick="selectAvatar(this)">♻️</div>
+          <div class="avatar-opt" data-av="🍃" onclick="selectAvatar(this)">🍃</div>
+          <div class="avatar-opt" data-av="🦋" onclick="selectAvatar(this)">🦋</div>
+          <div class="avatar-opt" data-av="🌊" onclick="selectAvatar(this)">🌊</div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input class="login-input" id="signupEmail" type="email" placeholder="your@email.com">
+        <span class="input-icon">📧</span>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input class="login-input" id="signupPassword" type="password" placeholder="Min. 6 characters" oninput="checkPasswordStrength(this.value)">
+        <div class="password-strength" id="pwStrength"></div>
+      </div>
+      <button class="login-btn" id="signupSubmitBtn" onclick="doSignup()">Create Account 🌿</button>
+    </div>
+  </div>
+</div>
+
+<!-- PARTICLES -->
+<div id="particles"></div>
+
+<!-- REWARD POPUP -->
+<div class="reward-popup" id="rewardPopup">🪙 +10 coins earned!</div>
+
+<!-- NOTIFICATIONS -->
+<div class="notif-stack" id="notifStack"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo" onclick="scrollTo('#hero')">🌿 Viridion</div>
+  <ul class="nav-links">
+    <li><a href="#hero" onclick="smoothNav(event,'#hero')">Home</a></li>
+    <li><a href="#education" onclick="smoothNav(event,'#education')">Education</a></li>
+    <li><a href="#scanner" onclick="smoothNav(event,'#scanner')">AI Scanner</a></li>
+    <li><a href="#map-section" onclick="smoothNav(event,'#map-section')">Trash Map</a></li>
+    <li><a href="#dashboard" onclick="smoothNav(event,'#dashboard')">Dashboard</a></li>
+    <li><a href="#community" onclick="smoothNav(event,'#community')">Community</a></li>
+    <li><a href="#shop" onclick="smoothNav(event,'#shop')">Shop</a></li>
+    <li><a href="#donation" onclick="smoothNav(event,'#donation')" class="donate-link">💚 Donate</a></li>
+  </ul>
+  <div class="nav-right">
+    <button class="btn-theme" onclick="toggleTheme()">🌙 Dark</button>
+    <div class="coin-nav" id="coinNav">🪙 <span class="coin-anim" id="coinDisplay">120</span></div>
+    <div id="authArea">
+      <button class="btn-login" onclick="openLogin()">Sign In</button>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-content">
+    <div class="hero-badge"><span class="dot"></span> AI-Powered School Sustainability Platform</div>
+    <h1 class="hero-title">Clean School,<br><span class="green">Green Future</span></h1>
+    <p class="hero-sub">Powered by AI & Student Action — transforming how schools manage waste, one scan at a time.</p>
+    <div class="hero-btns">
+      <button class="btn-primary" onclick="scrollTo('#scanner')">🤖 Scan Waste with AI</button>
+      <button class="btn-ghost" onclick="scrollTo('#map-section')">🗺️ Explore Trash Map</button>
+      <button class="btn-ghost" onclick="scrollTo('#community')">🌍 Join the Movement</button>
+    </div>
+    <div class="counters">
+      <div class="counter-item"><div class="counter-num" data-target="48291" id="c1">0</div><div class="counter-label">kg Waste Cleaned</div></div>
+      <div class="counter-divider"></div>
+      <div class="counter-item"><div class="counter-num" data-target="3840" id="c2">0</div><div class="counter-label">Active Users</div></div>
+      <div class="counter-divider"></div>
+      <div class="counter-item"><div class="counter-num" data-target="192400" id="c3">0</div><div class="counter-label">Coins Earned</div></div>
+    </div>
+    <div class="hero-cards">
+      <div class="hero-card" onclick="scrollTo('#scanner')"><div class="hero-card-icon">🤖</div><div class="hero-card-title">AI Scanner</div><div class="hero-card-sub">Detect waste type instantly</div></div>
+      <div class="hero-card" onclick="scrollTo('#dashboard')"><div class="hero-card-icon">📊</div><div class="hero-card-title">Dashboard</div><div class="hero-card-sub">Track school cleanliness</div></div>
+      <div class="hero-card" onclick="scrollTo('#community')"><div class="hero-card-icon">💬</div><div class="hero-card-title">Community</div><div class="hero-card-sub">Share & earn rewards</div></div>
+      <div class="hero-card" onclick="scrollTo('#shop')"><div class="hero-card-icon">🛒</div><div class="hero-card-title">Coin Shop</div><div class="hero-card-sub">Redeem your points</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- EDUCATION -->
+<section id="education">
+  <div style="max-width:1100px;margin:0 auto">
+    <div class="section-header reveal">
+      <div class="section-tag">Education</div>
+      <h2 class="section-title">Why <span class="green">Waste Matters</span></h2>
+      <p class="section-sub">Understanding decomposition times and the harm everyday waste causes to our planet.</p>
+    </div>
+    <div class="section-tag reveal" style="margin-bottom:16px;display:block;text-align:center">⏱️ How Long It Takes to Decompose</div>
+    <div class="decomp-grid reveal">
+      <div class="decomp-card" data-bar="95"><div class="decomp-icon">🧴</div><div class="decomp-name">Plastic Bottle</div><div class="decomp-years">450 yrs</div><div class="decomp-bar-wrap"><div class="decomp-bar"></div></div><div class="decomp-fact">Outlives 6 human generations. Breaks into microplastics contaminating food & water.</div></div>
+      <div class="decomp-card" data-bar="99"><div class="decomp-icon">🫙</div><div class="decomp-name">Glass Bottle</div><div class="decomp-years">1,000+ yrs</div><div class="decomp-bar-wrap"><div class="decomp-bar"></div></div><div class="decomp-fact">Never truly decomposes — only breaks into smaller pieces. 100% recyclable yet often landfilled.</div></div>
+      <div class="decomp-card" data-bar="70"><div class="decomp-icon">🥤</div><div class="decomp-name">Aluminum Can</div><div class="decomp-years">80 yrs</div><div class="decomp-bar-wrap"><div class="decomp-bar"></div></div><div class="decomp-fact">Takes 80 years to decompose but can be recycled indefinitely, saving 95% of energy.</div></div>
+      <div class="decomp-card good" data-bar="8"><div class="decomp-icon">📄</div><div class="decomp-name">Paper</div><div class="decomp-years">2–6 wks</div><div class="decomp-bar-wrap"><div class="decomp-bar"></div></div><div class="decomp-fact">Decomposes quickly but production deforests millions of acres. Recycle to save trees!</div></div>
+      <div class="decomp-card good" data-bar="3"><div class="decomp-icon">🍌</div><div class="decomp-name">Food Waste</div><div class="decomp-years">1–6 mos</div><div class="decomp-bar-wrap"><div class="decomp-bar"></div></div><div class="decomp-fact">Composts fast but in landfills produces methane — a greenhouse gas 25x more potent than CO₂.</div></div>
+      <div class="decomp-card" data-bar="85"><div class="decomp-icon">💻</div><div class="decomp-name">Electronics</div><div class="decomp-years">500+ yrs</div><div class="decomp-bar-wrap"><div class="decomp-bar"></div></div><div class="decomp-fact">Contains toxic lead, mercury & cadmium that leach into soil and groundwater for centuries.</div></div>
+    </div>
+    <div class="section-tag reveal" style="margin:48px 0 16px;display:block;text-align:center">⚠️ Why It's Harmful</div>
+    <div class="harm-grid reveal">
+      <div class="harm-card"><div class="harm-icon">🌊</div><div class="harm-title">Water Contamination</div><div class="harm-text">School plastic waste enters drains and pollutes waterways. Microplastics found in 94% of tap water near urban schools affect human health and aquatic life.</div></div>
+      <div class="harm-card"><div class="harm-icon">🌱</div><div class="harm-title">Soil Acidification</div><div class="harm-text">Improper food waste disposal acidifies soil, killing beneficial bacteria. Schools generate ~67kg of food waste per student per year — most avoidable with composting.</div></div>
+      <div class="harm-card"><div class="harm-icon">🧬</div><div class="harm-title">Microplastic Crisis</div><div class="harm-text">Plastic breaks into particles under 5mm that enter the food chain. Humans now consume roughly one credit card's worth of microplastics per week.</div></div>
+      <div class="harm-card"><div class="harm-icon">💨</div><div class="harm-title">Climate Impact</div><div class="harm-text">Landfill decomposition and waste incineration generate significant CO₂ and methane. Every kg diverted saves 2.1kg CO₂ equivalent — small actions, massive impact.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- AI SCANNER -->
+<section id="scanner">
+  <div style="max-width:1100px;margin:0 auto">
+    <div class="section-header reveal">
+      <div class="section-tag">Core Feature</div>
+      <h2 class="section-title">AI <span class="green">Waste Scanner</span></h2>
+      <p class="section-sub">Upload a photo and our AI instantly identifies the waste type and tells you how to dispose of it.</p>
+    </div>
+    <div class="scanner-layout reveal">
+      <div class="glass-card">
+        <div class="upload-zone" id="uploadZone"
+          ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)"
+          onclick="document.getElementById('file-input').click()">
+          <div class="upload-icon">📸</div>
+          <div class="upload-title">Drag & drop your image</div>
+          <div class="upload-sub">or click to select a photo of waste</div>
+          <button class="btn-primary" onclick="event.stopPropagation();document.getElementById('file-input').click()">Choose Image</button>
+          <input type="file" id="file-input" accept="image/*" onchange="handleFile(this.files[0])">
+          <div class="scan-container" id="scanContainer">
+            <img class="scan-img" id="scanImg" src="" alt="waste scan">
+            <div class="scan-line" id="scanLine"></div>
+            <div class="scan-overlay" id="scanOverlay"><span class="scan-text">⬡ AI ANALYZING...</span></div>
+          </div>
+          <div class="ai-loading-text" id="aiLoadingText" style="display:none">Loading AI model<span class="typing-dots"><span></span><span></span><span></span></span></div>
+        </div>
+      </div>
+      <div class="glass-card">
+        <div id="resultCard" style="display:none"></div>
+        <div id="scanPlaceholder" class="scan-placeholder">
+          <div class="scan-placeholder-icon">🔍</div>
+          <div style="font-size:15px;font-weight:600;margin-bottom:8px">Awaiting Scan</div>
+          <div style="font-size:13px">Upload an image to get real AI-powered waste analysis and earn coins!</div>
+          <div style="margin-top:16px;font-size:12px;color:var(--g3)">✓ Real TensorFlow.js AI · ✓ No random results · ✓ +10 coins per scan</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TRASH MAP -->
+<section id="map-section">
+  <div style="max-width:1100px;margin:0 auto">
+    <div class="section-header reveal">
+      <div class="section-tag">Interactive</div>
+      <h2 class="section-title">School <span class="green">Trash Map</span></h2>
+      <p class="section-sub">Report and track real waste locations using your GPS. Watch your school get cleaner.</p>
+    </div>
+    <div class="reveal">
+      <div class="map-controls">
+        <button class="btn-primary" onclick="addDirtyPin()">📍 Add Dirty Spot</button>
+        <button class="btn-ghost" onclick="addCleanPin()">✅ Mark as Cleaned</button>
+        <button class="btn-ghost" onclick="locateMe()">📡 My Location</button>
+        <div class="map-legend">
+          <span>🔴 Dirty (<span id="dirtyCount">3</span>)</span>
+          <span>🟢 Cleaned (<span id="cleanCount">4</span>)</span>
+        </div>
+      </div>
+      <div id="leaflet-map"></div>
+    </div>
+  </div>
+</section>
+
+<!-- DASHBOARD -->
+<section id="dashboard">
+  <div style="max-width:1100px;margin:0 auto">
+    <div class="section-header reveal">
+      <div class="section-tag">Analytics</div>
+      <h2 class="section-title">School <span class="green">Dashboard</span></h2>
+      <p class="section-sub">Live data on waste trends, cleanliness scores, and impact metrics.</p>
+    </div>
+    <div class="dashboard-grid reveal">
+      <div class="glass-card stat-card"><div class="stat-icon">🗑️</div><div class="stat-num" data-target="284" id="ds1">0</div><div class="stat-label">Reports This Month</div></div>
+      <div class="glass-card stat-card"><div class="stat-icon">♻️</div><div class="stat-num" data-target="67" id="ds2">0</div><div class="stat-label">% Recycled</div></div>
+      <div class="glass-card stat-card"><div class="stat-icon">👥</div><div class="stat-num" data-target="142" id="ds3">0</div><div class="stat-label">Active Students</div></div>
+    </div>
+    <div class="chart-col reveal">
+      <div class="glass-card">
+        <div style="padding:20px 20px 0;font-size:14px;font-weight:600">Weekly Waste Reports</div>
+        <div style="padding:4px 20px 0;font-size:12px;color:var(--fg2)">Hover bars to see values</div>
+        <div class="chart-wrap" id="barChart"></div>
+      </div>
+      <div class="glass-card sci-meter">
+        <svg style="display:none"><defs><linearGradient id="sciGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#00c853"/><stop offset="100%" stop-color="#69f0ae"/></linearGradient></defs></svg>
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:2px;color:var(--fg2);margin-bottom:14px">School Clean Index</div>
+        <div class="sci-circle">
+          <svg class="sci-svg" viewBox="0 0 180 180">
+            <circle class="sci-track" cx="90" cy="90" r="72"/>
+            <circle class="sci-progress" id="sciProgress" cx="90" cy="90" r="72"/>
+          </svg>
+          <div class="sci-value"><div class="sci-num" id="sciNum">0</div><div class="sci-label-text">SCI Score</div></div>
+        </div>
+        <div style="font-size:13px;font-weight:600;color:var(--g2)">Good Standing 🌿</div>
+        <div style="font-size:12px;color:var(--fg2);margin-top:4px">Based on reports & cleanups</div>
+      </div>
+    </div>
+    <div class="glass-card reveal" style="margin-top:20px">
+      <div style="padding:20px 28px 0;font-size:14px;font-weight:600">♻️ Plastic Reduction Simulator</div>
+      <div class="slider-wrap">
+        <div class="slider-label"><span>Reduce plastic usage by</span><span id="sliderVal">20%</span></div>
+        <input type="range" min="0" max="100" value="20" id="plasticSlider" oninput="updateSimulator(this.value)">
+        <div class="sim-grid">
+          <div class="sim-box"><div class="sim-num" style="color:var(--g2)" id="simSave">12kg</div><div class="sim-box-label">Plastic Saved/Month</div></div>
+          <div class="sim-box"><div class="sim-num" style="color:var(--g3)" id="simCO2">8kg</div><div class="sim-box-label">CO₂ Reduced</div></div>
+          <div class="sim-box"><div class="sim-num" style="color:var(--yellow)" id="simCoins">240</div><div class="sim-box-label">Coins Potential</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COMMUNITY -->
+<section id="community">
+  <div style="max-width:1100px;margin:0 auto">
+    <div class="section-header reveal">
+      <div class="section-tag">Social</div>
+      <h2 class="section-title">Community <span class="green">Feed</span></h2>
+      <p class="section-sub">Share your cleanup efforts, inspire others, and earn rewards for every post.</p>
+    </div>
+    <div class="reveal">
+      <div class="community-tabs">
+        <button class="comm-tab active" onclick="switchTab('add')">✏️ Add Post</button>
+        <button class="comm-tab" onclick="switchTab('feed')">🌿 Community Feed</button>
+      </div>
+      <div id="tab-add" class="tab-panel active">
+        <div class="glass-card add-post-form">
+          <div style="font-size:14px;font-weight:600;margin-bottom:16px">💬 Share your eco action</div>
+          <textarea class="form-input" id="postInput" rows="3" placeholder="What did you do for the environment today? Share a cleanup story, eco tip, or idea..."></textarea>
+          <div style="margin-top:12px">
+            <div id="postImagePreview" style="display:none;margin-bottom:12px"><img id="postPreviewImg" style="width:100%;max-height:200px;object-fit:cover;border-radius:10px;" src="" alt=""></div>
+            <input type="file" id="postImageInput" accept="image/*" style="display:none" onchange="previewPostImage(this)">
+          </div>
+          <div class="form-row">
+            <button class="image-upload-btn" onclick="document.getElementById('postImageInput').click()">📸 Add Photo</button>
+            <button class="btn-primary" style="font-size:13px;padding:10px 22px" onclick="addPost()">Post (+10 🪙)</button>
+          </div>
+        </div>
+      </div>
+      <div id="tab-feed" class="tab-panel"><div class="posts-grid" id="postsGrid"></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- WHY IT MATTERS -->
+<section id="status">
+  <div style="max-width:1100px;margin:0 auto">
+    <div class="section-header reveal">
+      <div class="section-tag">Impact Data</div>
+      <h2 class="section-title">The Numbers That <span class="green">Drive Change</span></h2>
+    </div>
+    <div class="status-grid reveal">
+      <div class="glass-card status-card"><div class="status-icon-big">🌊</div><div class="status-title-h">Water Pollution</div><div class="status-text">School plastic waste frequently ends up in drains, contaminating local ecosystems with microplastics found in 94% of tap water samples near schools.</div><div class="status-stat"><div class="status-num">8M</div><div class="status-lbl">tons of plastic enter oceans yearly</div></div><div class="status-stat"><div class="status-num g">73%</div><div class="status-lbl">reduction possible with proper sorting</div></div></div>
+      <div class="glass-card status-card"><div class="status-icon-big">🌱</div><div class="status-title-h">Soil Pollution</div><div class="status-text">Food waste improperly disposed contributes to soil acidification. Schools generate an average of 67kg of food waste per student per year.</div><div class="status-stat"><div class="status-num">67kg</div><div class="status-lbl">food waste per student per year</div></div><div class="status-stat"><div class="status-num g">85%</div><div class="status-lbl">could be composted instead</div></div></div>
+      <div class="glass-card status-card"><div class="status-icon-big">♻️</div><div class="status-title-h">Recycling Gap</div><div class="status-text">Only 32% of school waste is currently recycled. With better awareness and infrastructure, this could exceed 80%, dramatically reducing landfill burden.</div><div class="status-stat"><div class="status-num">32%</div><div class="status-lbl">currently recycled in schools</div></div><div class="status-stat"><div class="status-num g">80%</div><div class="status-lbl">achievable with Viridion</div></div></div>
+      <div class="glass-card status-card"><div class="status-icon-big">💨</div><div class="status-title-h">Carbon Footprint</div><div class="status-text">Every kilogram of waste redirected from landfill saves 2.1kg of CO₂ equivalent. Viridion schools have already saved 12 tonnes this year.</div><div class="status-stat"><div class="status-num">2.1kg</div><div class="status-lbl">CO₂ saved per kg diverted from landfill</div></div><div class="status-stat"><div class="status-num g">12T</div><div class="status-lbl">CO₂ saved by Viridion schools</div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- DONATION -->
+<section id="donation">
+  <div class="section-header reveal">
+    <div class="section-tag">Impact</div>
+    <h2 class="section-title">Fund <span class="green">Cleanups</span></h2>
+    <p class="section-sub">Your contribution directly funds waste bins, recycling kits, and cleanup events at schools in need.</p>
+  </div>
+  <div class="reveal">
+    <div class="donation-steps">
+      <div class="donation-step">
+        <div class="donation-step-title">① Choose Amount</div>
+        <div class="amount-btns">
+          <button class="amount-btn" onclick="selectAmount(this,1000)">₮1K</button>
+          <button class="amount-btn active" onclick="selectAmount(this,5000)">₮5K</button>
+          <button class="amount-btn" onclick="selectAmount(this,10000)">₮10K</button>
+          <button class="amount-btn" onclick="selectAmount(this,'custom')">Custom</button>
+        </div>
+        <div id="customAmountWrap" style="display:none;margin-top:12px">
+          <input type="number" id="customAmount" placeholder="Enter amount (₮)" style="width:100%;background:var(--glass);border:1px solid var(--border);color:var(--fg);padding:10px 14px;border-radius:10px;font-family:var(--font-body);font-size:14px;outline:none;cursor:none" oninput="updateDonationImpact()">
+        </div>
+      </div>
+      <div class="donation-step">
+        <div class="donation-step-title">② Choose Destination</div>
+        <div class="dest-btns">
+          <button class="dest-btn active" onclick="selectDest(this,'School')">🏫 School</button>
+          <button class="dest-btn" onclick="selectDest(this,'Kindergarten')">🎒 Kindergarten</button>
+          <button class="dest-btn" onclick="selectDest(this,'Shelter')">🏠 Shelter</button>
+        </div>
+      </div>
+      <div class="donation-step">
+        <div class="donation-step-title">③ Choose Purpose</div>
+        <div class="purpose-btns">
+          <button class="purpose-btn active" onclick="selectPurpose(this,'Trash Bags')">🗑️ Trash Bags</button>
+          <button class="purpose-btn" onclick="selectPurpose(this,'Recycling Bins')">♻️ Recycling Bins</button>
+          <button class="purpose-btn" onclick="selectPurpose(this,'Cleaning Tools')">🧹 Cleaning Tools</button>
+          <button class="purpose-btn" onclick="selectPurpose(this,'Plants')">🌱 Plants</button>
+        </div>
+      </div>
+    </div>
+    <div class="impact-visualizer">
+      <div class="impact-title">💚 Your Impact</div>
+      <div class="impact-text" id="impactText">Your ₮5,000 donation helps provide Trash Bags for a School</div>
+      <div class="impact-bar-wrap"><div class="impact-bar" id="impactBar" style="width:50%"></div></div>
+      <div style="font-size:12px;color:var(--fg2);margin-top:10px">₮160,000 of ₮500,000 goal raised this month</div>
+      <div class="donate-btn-wrap">
+        <button class="btn-primary" style="padding:14px 40px;font-size:15px" onclick="processDonation()">🌿 Donate & Make Impact</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SHOP -->
+<section id="shop">
+  <div style="max-width:1100px;margin:0 auto">
+    <div class="section-header reveal">
+      <div class="section-tag">Rewards</div>
+      <h2 class="section-title">Coin <span class="green">Shop</span></h2>
+      <p class="section-sub">Redeem your earned coins for real eco products and school supplies.</p>
+    </div>
+    <div style="text-align:center" class="reveal"><div class="wallet">🪙 Your Balance: <span id="walletCoins">120</span> Coins</div></div>
+    <div class="shop-grid reveal" id="shopGrid"></div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">🌿 Viridion</div>
+  <p style="margin-bottom:8px">Empowering students to build a cleaner, greener world through AI & community.</p>
+  <p style="font-size:12px;opacity:.5">© 2025 Viridion. Built for a sustainable future.</p>
+</footer>
+
+<!-- CHAT BUTTON -->
+<button id="chatBtn" onclick="toggleChat()">
+  <span id="chatBtnIcon">🌿</span>
+  <span id="chatBtnLabel">Ask Viridion AI</span>
+  <span class="chat-unread" id="chatUnread">1</span>
+</button>
+
+<!-- CHAT PANEL -->
+<div id="chatPanel">
+  <div class="chat-header">
+    <div class="chat-header-avatar">🌿</div>
+    <div class="chat-header-info">
+      <div class="chat-header-name">Viridion AI</div>
+      <div class="chat-header-status"><span class="chat-status-dot"></span> Online · Powered by Claude</div>
+    </div>
+    <div class="chat-header-actions">
+      <button class="chat-action-btn" onclick="clearChat()" title="Clear chat">🗑️</button>
+    </div>
+    <button class="chat-close" onclick="toggleChat()">✕</button>
+  </div>
+
+  <div class="chat-mode-bar">
+    <button class="chat-mode-btn active" id="modeChat" onclick="setMode('chat')">💬 Chat</button>
+    <button class="chat-mode-btn" id="modeTools" onclick="setMode('tools')">⚡ Quick Tools</button>
+    <button class="chat-mode-btn" id="modeTips" onclick="setMode('tips')">🌿 Eco Tips</button>
+  </div>
+
+  <div class="chat-messages" id="chatMessages"></div>
+
+  <div class="chat-suggestions" id="chatSuggestions">
+    <button class="chat-suggestion" onclick="sendSuggestion(this)">♻️ How do I recycle?</button>
+    <button class="chat-suggestion" onclick="sendSuggestion(this)">🪙 How to earn coins?</button>
+    <button class="chat-suggestion" onclick="sendSuggestion(this)">🌍 Eco tips for school</button>
+    <button class="chat-suggestion" onclick="sendSuggestion(this)">🗑️ Waste types guide</button>
+    <button class="chat-suggestion" onclick="sendSuggestion(this)">🌡️ Climate change facts</button>
+  </div>
+
+  <div class="chat-quick-tools" id="chatQuickTools" style="display:none">
+    <button class="quick-tool" onclick="runQuickTool('bin')">🗑️ Which bin?</button>
+    <button class="quick-tool" onclick="runQuickTool('decomp')">⏱️ Decomposition time</button>
+    <button class="quick-tool" onclick="runQuickTool('footprint')">🌍 My footprint</button>
+    <button class="quick-tool" onclick="runQuickTool('challenge')">🏆 Daily challenge</button>
+  </div>
+
+  <div class="chat-input-row">
+    <input type="text" id="chatInput" placeholder="Ask me anything eco..." onkeydown="if(event.key==='Enter')sendChat()">
+    <div class="chat-input-btns">
+      <button class="chat-attach-btn" title="Attach image">📎</button>
+      <button id="chatSendBtn" onclick="sendChat()">➤</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.15.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
+<script>
+// ══════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════
+let coins = 120;
+let isDark = true;
+let tfModel = null;
+let modelLoading = false;
+let leafletMap = null;
+let mapPins = [];
+let donationAmount = 5000;
+let donationDest = 'School';
+let donationPurpose = 'Trash Bags';
+let chatOpen = false;
+let chatHistory = [];
+let chatMode = 'chat';
+
+// Auth state
+let currentUser = null;
+let selectedAvatar = '🌿';
+
+// Demo accounts for login
+const demoAccounts = {
+  'demo@viridion.com': { password: 'eco123', name: 'EcoDemo', avatar: '🌿' },
+  'test@test.com': { password: 'test123', name: 'GreenTester', avatar: '🌱' },
+};
+// In-memory user store for sign-ups this session
+const registeredUsers = {};
+
+// ══════════════════════════════════════════════════
+// INTRO
+// ══════════════════════════════════════════════════
+(function initIntro() {
+  const ip = document.getElementById('introParticles');
+  const smokeColors = ['rgba(80,60,0,.3)', 'rgba(40,30,0,.2)', 'rgba(100,80,20,.25)'];
+  for (let i = 0; i < 20; i++) {
+    const p = document.createElement('div');
+    p.className = 'smoke-particle';
+    const size = Math.random() * 60 + 20;
+    p.style.cssText = `width:${size}px;height:${size}px;left:${Math.random()*100}%;bottom:${Math.random()*50}%;background:${smokeColors[Math.floor(Math.random()*3)]};filter:blur(${Math.random()*20+10}px);animation-duration:${Math.random()*3+2}s;animation-delay:${Math.random()*2}s`;
+    ip.appendChild(p);
+  }
+  setTimeout(() => { if (document.getElementById('intro')) finishIntro(); }, 3000);
+})();
+function skipIntro() { finishIntro(); }
+function finishIntro() {
+  const intro = document.getElementById('intro');
+  if (!intro || intro.classList.contains('hidden')) return;
+  intro.classList.add('hidden');
+  setTimeout(() => intro.remove(), 900);
+}
+
+// ══════════════════════════════════════════════════
+// CURSOR
+// ══════════════════════════════════════════════════
+const cursor = document.getElementById('cursor');
+const ring = document.getElementById('cursor-ring');
+let mx = 0, my = 0, rx = 0, ry = 0;
+document.addEventListener('mousemove', e => {
+  mx = e.clientX; my = e.clientY;
+  cursor.style.left = mx + 'px'; cursor.style.top = my + 'px';
+});
+(function animRing() {
+  rx += (mx - rx) * .12; ry += (my - ry) * .12;
+  ring.style.left = rx + 'px'; ring.style.top = ry + 'px';
+  requestAnimationFrame(animRing);
+})();
+
+// ══════════════════════════════════════════════════
+// PARTICLES
+// ══════════════════════════════════════════════════
+const pIcons = ['🌿', '♻️', '🍃', '💚', '🌱', '⭕'];
+for (let i = 0; i < 24; i++) {
+  const p = document.createElement('div');
+  p.className = 'particle';
+  const size = Math.random() * 14 + 8;
+  p.style.cssText = `left:${Math.random()*100}%;animation-duration:${Math.random()*22+14}s;animation-delay:${Math.random()*20}s;font-size:${size}px;background:none;width:${size}px;height:${size}px`;
+  p.textContent = pIcons[Math.floor(Math.random() * pIcons.length)];
+  document.getElementById('particles').appendChild(p);
+}
+
+// ══════════════════════════════════════════════════
+// THEME
+// ══════════════════════════════════════════════════
+function toggleTheme() {
+  isDark = !isDark;
+  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  document.querySelector('.btn-theme').textContent = isDark ? '🌙 Dark' : '☀️ Light';
+}
+
+// ══════════════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════════════
+function scrollTo(sel) { document.querySelector(sel).scrollIntoView({ behavior: 'smooth' }); }
+function smoothNav(e, sel) { e.preventDefault(); scrollTo(sel); }
+
+// ══════════════════════════════════════════════════
+// LOGIN / AUTH
+// ══════════════════════════════════════════════════
+function openLogin() {
+  document.getElementById('loginOverlay').classList.add('open');
+}
+
+function closeLogin() {
+  document.getElementById('loginOverlay').classList.remove('open');
+  clearLoginErrors();
+}
+
+// Close overlay when clicking outside
+document.getElementById('loginOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeLogin();
+});
+
+function switchLoginTab(tab) {
+  document.querySelectorAll('.login-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.login-form').forEach(f => f.classList.remove('active'));
+  if (tab === 'login') {
+    document.querySelectorAll('.login-tab')[0].classList.add('active');
+    document.getElementById('loginForm').classList.add('active');
+  } else {
+    document.querySelectorAll('.login-tab')[1].classList.add('active');
+    document.getElementById('signupForm').classList.add('active');
+  }
+  clearLoginErrors();
+}
+
+function clearLoginErrors() {
+  ['loginError','signupError','signupSuccess'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.style.display = 'none'; el.textContent = ''; }
+  });
+}
+
+function showLoginError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg; el.style.display = 'block';
+}
+
+function checkPasswordStrength(val) {
+  const bar = document.getElementById('pwStrength');
+  if (!val) { bar.className = 'password-strength'; return; }
+  if (val.length < 4) bar.className = 'password-strength strength-weak';
+  else if (val.length < 7) bar.className = 'password-strength strength-mid';
+  else bar.className = 'password-strength strength-strong';
+}
+
+function selectAvatar(el) {
+  document.querySelectorAll('.avatar-opt').forEach(a => a.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedAvatar = el.dataset.av;
+}
+
+function setAuthLoading(btnId, loading) {
+  const btn = document.getElementById(btnId);
+  if (loading) btn.classList.add('loading');
+  else btn.classList.remove('loading');
+  btn.disabled = loading;
+}
+
+function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  if (!email || !password) { showLoginError('loginError', '⚠️ Please fill in all fields.'); return; }
+
+  setAuthLoading('loginSubmitBtn', true);
+
+  // Simulate async auth (demo logic)
+  setTimeout(() => {
+    setAuthLoading('loginSubmitBtn', false);
+    const allAccounts = { ...demoAccounts, ...registeredUsers };
+    const account = allAccounts[email.toLowerCase()];
+    if (!account || account.password !== password) {
+      showLoginError('loginError', '❌ Invalid email or password. Try demo@viridion.com / eco123');
+      return;
+    }
+    loginSuccess(account.name, account.avatar, email);
+  }, 900);
+}
+
+function doSignup() {
+  const name = document.getElementById('signupName').value.trim();
+  const email = document.getElementById('signupEmail').value.trim();
+  const password = document.getElementById('signupPassword').value;
+  if (!name || !email || !password) { showLoginError('signupError', '⚠️ Please fill in all fields.'); return; }
+  if (password.length < 6) { showLoginError('signupError', '⚠️ Password must be at least 6 characters.'); return; }
+  if (!/\S+@\S+\.\S+/.test(email)) { showLoginError('signupError', '⚠️ Please enter a valid email.'); return; }
+  const allAccounts = { ...demoAccounts, ...registeredUsers };
+  if (allAccounts[email.toLowerCase()]) { showLoginError('signupError', '⚠️ An account with this email already exists.'); return; }
+
+  setAuthLoading('signupSubmitBtn', true);
+
+  setTimeout(() => {
+    setAuthLoading('signupSubmitBtn', false);
+    registeredUsers[email.toLowerCase()] = { password, name, avatar: selectedAvatar };
+    const el = document.getElementById('signupSuccess');
+    el.textContent = '🎉 Account created! Signing you in...';
+    el.style.display = 'block';
+    setTimeout(() => loginSuccess(name, selectedAvatar, email), 1000);
+  }, 900);
+}
+
+function doSocialLogin(provider) {
+  showNotif(`🔗 ${provider} login coming soon! Use demo@viridion.com / eco123 for now.`);
+}
+
+function showForgot() {
+  showNotif('📧 Password reset email sent! (demo mode — use eco123)');
+}
+
+function loginSuccess(name, avatar, email) {
+  currentUser = { name, avatar, email };
+  closeLogin();
+  renderAuthArea();
+  addCoins(25); // welcome bonus
+  showNotif(`🌿 Welcome back, ${name}! +25 welcome coins!`, 4000);
+  // Personalize chat
+  if (chatHistory.length === 0 && chatOpen) {
+    addBotMessage(`🌿 Welcome, ${name}! Great to have you here. What eco topic can I help you with today?`);
+  }
+}
+
+function logout() {
+  currentUser = null;
+  renderAuthArea();
+  showNotif('👋 Signed out. See you soon!');
+}
+
+function renderAuthArea() {
+  const area = document.getElementById('authArea');
+  if (currentUser) {
+    area.innerHTML = `
+      <div class="user-chip">
+        <div class="user-chip-avatar">${currentUser.avatar}</div>
+        <div class="user-chip-name">${currentUser.name}</div>
+        <div class="user-dropdown">
+          <div class="user-dropdown-item">
+            <span>${currentUser.avatar}</span>
+            <div>
+              <div style="font-size:13px;font-weight:600;color:var(--fg)">${currentUser.name}</div>
+              <div style="font-size:11px;color:var(--fg2)">${currentUser.email}</div>
+            </div>
+          </div>
+          <div class="user-dropdown-sep"></div>
+          <div class="user-dropdown-item" onclick="scrollTo('#dashboard')">📊 My Dashboard</div>
+          <div class="user-dropdown-item" onclick="scrollTo('#shop')">🛒 Coin Shop</div>
+          <div class="user-dropdown-item" onclick="openLogin()">⚙️ Settings</div>
+          <div class="user-dropdown-sep"></div>
+          <div class="user-dropdown-item" onclick="logout()" style="color:var(--red)">🚪 Sign Out</div>
+        </div>
+      </div>`;
+  } else {
+    area.innerHTML = `<button class="btn-login" onclick="openLogin()">Sign In</button>`;
+  }
+}
+
+// ══════════════════════════════════════════════════
+// REVEAL & COUNTERS
+// ══════════════════════════════════════════════════
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      observer.unobserve(e.target);
+      e.target.querySelectorAll('.decomp-card').forEach(card => {
+        const pct = parseInt(card.dataset.bar) || 0;
+        setTimeout(() => { card.querySelector('.decomp-bar').style.width = pct + '%'; }, 200);
+      });
+    }
+  });
+}, { threshold: .12 });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+function animCounter(el, target, dur = 1800) {
+  const start = performance.now();
+  const update = t => {
+    const p = Math.min((t - start) / dur, 1);
+    const ease = 1 - Math.pow(1 - p, 4);
+    el.textContent = Math.floor(ease * target).toLocaleString();
+    if (p < 1) requestAnimationFrame(update);
+  };
+  requestAnimationFrame(update);
+}
+const counterObs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const el = e.target, t = parseInt(el.dataset.target);
+      animCounter(el, t); counterObs.unobserve(el);
+    }
+  });
+}, { threshold: .3 });
+document.querySelectorAll('[data-target]').forEach(el => counterObs.observe(el));
+
+// ══════════════════════════════════════════════════
+// NOTIFICATIONS
+// ══════════════════════════════════════════════════
+function showNotif(msg, dur = 3200) {
+  const n = document.createElement('div');
+  n.className = 'notif'; n.textContent = msg;
+  document.getElementById('notifStack').appendChild(n);
+  requestAnimationFrame(() => n.classList.add('show'));
+  setTimeout(() => { n.classList.remove('show'); setTimeout(() => n.remove(), 400); }, dur);
+}
+function addCoins(amount) {
+  coins += amount;
+  document.getElementById('coinDisplay').textContent = coins;
+  document.getElementById('walletCoins').textContent = coins;
+  if (amount > 0) {
+    const rp = document.getElementById('rewardPopup');
+    rp.textContent = `🪙 +${amount} coins earned!`;
+    rp.classList.add('show');
+    setTimeout(() => rp.classList.remove('show'), 2400);
+    const cn = document.getElementById('coinNav');
+    cn.classList.add('bump');
+    setTimeout(() => cn.classList.remove('bump'), 400);
+  }
+  updateShopAffordability();
+}
+
+// ══════════════════════════════════════════════════
+// CHAT — IMPROVED, Claude-powered
+// ══════════════════════════════════════════════════
+const CHAT_SYSTEM = `You are Viridion AI, a friendly, knowledgeable, and enthusiastic eco-assistant for a school sustainability platform called Viridion. You are powered by Claude.
+
+Your expertise covers:
+- Waste sorting and recycling (which bin for plastic, paper, metal, glass, food, e-waste, textiles, batteries, hazardous waste)
+- Decomposition timelines and environmental impact of different waste types
+- Composting, upcycling, and zero-waste living tips
+- Microplastics, ocean pollution, soil contamination, and climate change — explained accessibly
+- School sustainability initiatives, eco clubs, green school certifications
+- How the Viridion platform works: AI Scanner (+10 coins per scan), community posts (+10), map reports (+5), marking clean (+15), coin shop rewards
+- Carbon footprint calculation and reduction strategies
+- Circular economy concepts explained for students
+- Mongolian and local sustainability context when relevant (the platform is based in Ulaanbaatar)
+
+Personality: warm, encouraging, never preachy, slightly playful. Celebrate small wins. Use relevant emojis naturally (not excessively). 
+
+Response style:
+- Be concise but complete — 2-4 sentences for simple questions, more for complex explanations
+- Use bullet points sparingly, only when listing multiple items makes it clearer
+- When explaining how to sort waste, be specific (e.g., "rinse the bottle first, then place in the blue recycling bin")
+- End responses with an encouraging nudge or follow-up question when natural
+- If asked about something unrelated to eco/sustainability, briefly answer if you can, then pivot back to eco topics
+
+Never make up statistics. If unsure, say so and suggest where to learn more.`;
+
+function toggleChat() {
+  chatOpen = !chatOpen;
+  const panel = document.getElementById('chatPanel');
+  panel.classList.toggle('open', chatOpen);
+  if (chatOpen) {
+    document.getElementById('chatUnread').style.display = 'none';
+    document.getElementById('chatBtnLabel').textContent = 'Close Chat';
+    document.getElementById('chatBtnIcon').textContent = '✕';
+    if (chatHistory.length === 0) {
+      const greeting = currentUser
+        ? `🌿 Hey ${currentUser.name}! I'm Viridion AI, your eco-guide. Ask me about recycling, waste sorting, earning coins, or any green topic — I'm here to help!`
+        : `🌿 Hey! I'm Viridion AI — your eco-guide powered by Claude. Ask me anything about recycling, waste sorting, how to earn coins, or sustainability tips for your school!`;
+      addBotMessage(greeting);
+    }
+    setTimeout(() => document.getElementById('chatInput').focus(), 300);
+  } else {
+    document.getElementById('chatBtnLabel').textContent = 'Ask Viridion AI';
+    document.getElementById('chatBtnIcon').textContent = '🌿';
+  }
+}
+
+function setMode(mode) {
+  chatMode = mode;
+  document.querySelectorAll('.chat-mode-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('mode' + mode.charAt(0).toUpperCase() + mode.slice(1)).classList.add('active');
+  const suggs = document.getElementById('chatSuggestions');
+  const tools = document.getElementById('chatQuickTools');
+  if (mode === 'tools') { suggs.style.display = 'none'; tools.style.display = 'grid'; }
+  else { suggs.style.display = 'flex'; tools.style.display = 'none'; }
+  if (mode === 'tips') loadDailyTip();
+}
+
+function loadDailyTip() {
+  const tips = [
+    "🌿 **Tip of the day:** Carry a reusable water bottle — it saves ~156 plastic bottles per year!",
+    "♻️ **Tip of the day:** Rinse containers before recycling — contaminated recycling often ends up in landfill.",
+    "🍎 **Tip of the day:** Composting food waste creates nutrient-rich soil and cuts methane emissions by up to 70%.",
+    "💡 **Tip of the day:** Bring your own bag shopping — each reusable bag replaces ~170 plastic bags per year!",
+    "🌊 **Tip of the day:** Pick up 3 pieces of litter today. Small actions ripple outward — and earn coins!",
+  ];
+  const tip = tips[new Date().getDay() % tips.length];
+  addBotMessage(tip);
+}
+
+function runQuickTool(tool) {
+  const prompts = {
+    bin: "I have an item and need to know which bin to put it in. Can you ask me what item it is and then guide me?",
+    decomp: "Tell me the decomposition times for the most common types of school waste in a clear, easy-to-remember format.",
+    footprint: "Give me a quick 3-question quiz to estimate my daily environmental footprint and what I can do to reduce it.",
+    challenge: "Give me an exciting eco challenge I can do today at school to earn coins and make a real difference.",
+  };
+  document.getElementById('chatInput').value = prompts[tool];
+  setMode('chat');
+  sendChat();
+}
+
+function clearChat() {
+  chatHistory = [];
+  document.getElementById('chatMessages').innerHTML = '';
+  document.getElementById('chatSuggestions').style.display = 'flex';
+  addBotMessage("🌿 Chat cleared! What eco question can I help you with?");
+}
+
+function addBotMessage(text) {
+  const msgs = document.getElementById('chatMessages');
+  const wrap = document.createElement('div');
+  wrap.className = 'chat-msg';
+  // Simple markdown: **bold**
+  const formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  wrap.innerHTML = `
+    <div class="msg-avatar">${currentUser?.avatar || '🌿'}</div>
+    <div class="msg-content">
+      <div class="msg-bubble">${formatted}</div>
+      <div class="msg-time">${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div>
+    </div>`;
+  msgs.appendChild(wrap);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function addUserMessage(text) {
+  const msgs = document.getElementById('chatMessages');
+  const wrap = document.createElement('div');
+  wrap.className = 'chat-msg user';
+  wrap.innerHTML = `
+    <div class="msg-avatar user-av">${currentUser?.avatar || '👤'}</div>
+    <div class="msg-content">
+      <div class="msg-bubble">${text}</div>
+      <div class="msg-time">${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div>
+    </div>`;
+  msgs.appendChild(wrap);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function addTypingIndicator() {
+  const msgs = document.getElementById('chatMessages');
+  const wrap = document.createElement('div');
+  wrap.className = 'chat-msg chat-typing';
+  wrap.id = 'chatTyping';
+  wrap.innerHTML = `<div class="msg-avatar">🌿</div><div class="msg-content"><div class="msg-bubble"><span class="typing-dots"><span></span><span></span><span></span></span></div></div>`;
+  msgs.appendChild(wrap);
+  msgs.scrollTop = msgs.scrollHeight;
+  return wrap;
+}
+
+async function sendChat() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+
+  addUserMessage(text);
+  chatHistory.push({ role: 'user', content: text });
+  document.getElementById('chatSuggestions').style.display = 'none';
+
+  const typing = addTypingIndicator();
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: CHAT_SYSTEM,
+        messages: chatHistory
+      })
+    });
+
+    if (!res.ok) throw new Error('API error');
+    const data = await res.json();
+    typing.remove();
+
+    const reply = data.content?.map(b => b.text || '').join('') || "I couldn't connect right now. Try again!";
+    chatHistory.push({ role: 'assistant', content: reply });
+    addBotMessage(reply);
+  } catch (err) {
+    typing.remove();
+    const reply = getLocalReply(text);
+    chatHistory.push({ role: 'assistant', content: reply });
+    addBotMessage(reply);
+  }
+}
+
+function getLocalReply(text) {
+  const t = text.toLowerCase();
+  if (t.includes('coin') || t.includes('earn')) return "🪙 You earn coins by: scanning waste (+10 🤖), posting in the community (+10 📝), reporting dirty spots on the map (+5 📍), and marking spots as cleaned (+15 ✅). Keep going!";
+  if (t.includes('plastic')) return "♻️ Plastic takes **450+ years** to decompose! Rinse plastic bottles and place them in the blue recycling bin. Try swapping single-use plastic for reusables — every swap makes a real difference! 🌿";
+  if (t.includes('recycle') || t.includes('sort') || t.includes('bin')) return "♻️ Sort waste into: 🔵 **Blue** = plastic & paper, 🟡 **Yellow** = metal, 🟢 **Green** = glass, 🟤 **Brown** = food & organic. When in doubt, use the AI Scanner to be sure!";
+  if (t.includes('food') || t.includes('compost')) return "🍎 Food waste composts in just **1–6 months**! But in landfills it produces methane — a greenhouse gas 25× worse than CO₂. Starting a school compost bin is one of the highest-impact actions you can take!";
+  if (t.includes('tip') || t.includes('eco') || t.includes('help')) return "🌱 Top eco tips: 💧 Carry a reusable water bottle, 🛍️ bring your own bag, 🚫 say no to straws, and 📸 use the AI Scanner to learn what goes where. Every small action adds up to massive change!";
+  if (t.includes('glass')) return "🫙 Glass can be recycled **infinitely** with zero quality loss! A glass bottle takes 1,000+ years to decompose — always put it in the green recycling bin!";
+  if (t.includes('paper')) return "📄 Paper decomposes in **2–6 weeks** and can be recycled up to 7 times. Flatten cardboard boxes and put paper in the blue bin. Recycling one tonne of paper saves 17 trees! 🌳";
+  if (t.includes('scan') || t.includes('camera') || t.includes('ai')) return "📸 Use the **AI Scanner** section above! Upload a photo of any waste item and our TensorFlow AI will identify the type and tell you exactly how to dispose of it. You earn +10 coins per scan!";
+  if (t.includes('climate') || t.includes('global warming')) return "🌍 Climate change is driven by greenhouse gases — waste contributes significantly. Every kg of waste diverted from landfill saves **2.1kg of CO₂**. The Viridion community has already saved 12 tonnes this year!";
+  if (t.includes('hello') || t.includes('hi') || t.includes('hey')) return "🌿 Hey there! Great to connect with a fellow eco-warrior! What sustainability topic can I help you explore today?";
+  return "🌿 Great question! I'm your eco-guide for all things sustainability. Try asking about recycling tips, waste types, how to earn coins, composting, or our school sustainability features — I love talking green! 🍃";
+}
+
+function sendSuggestion(btn) {
+  const text = btn.textContent.replace(/^[^\w]+/, '').trim();
+  document.getElementById('chatInput').value = text;
+  sendChat();
+}
+
+// ══════════════════════════════════════════════════
+// AI SCANNER — TensorFlow.js MobileNet
+// ══════════════════════════════════════════════════
+const wasteMap = {
+  plastic: { keywords: ['bottle','plastic','container','water bottle','cup','straw','bag','packaging','wrapper','jug','canteen','flask'], color: '#00c853', emoji: '♻️', msg: 'This is plastic waste. Please place it in the blue recycling bin. Avoid single-use plastics — they take 450+ years to decompose!' },
+  paper: { keywords: ['book','newspaper','magazine','paper','cardboard','box','envelope','napkin','tissue','carton','package'], color: '#00b0ff', emoji: '📄', msg: 'Paper waste detected! Flatten it and put it in the paper recycling bin. Paper can be recycled up to 7 times, saving trees!' },
+  metal: { keywords: ['can','tin','aluminum','metal','iron','steel','fork','knife','spoon','tool','wire'], color: '#ffd740', emoji: '🥫', msg: 'Metal detected! Clean it out and toss in the metal recycling bin. Aluminum recycling uses 95% less energy than producing new metal!' },
+  food: { keywords: ['food','fruit','vegetable','banana','apple','orange','pizza','sandwich','meal','plate','bowl','salad','bread','egg'], color: '#ff7043', emoji: '🍎', msg: 'Food waste detected. Compost it instead! Food in compost produces zero methane, while food in landfill is a major climate driver.' },
+  glass: { keywords: ['glass','bottle','jar','vase','window','mirror','crystal','wine'], color: '#e040fb', emoji: '🫙', msg: 'Glass detected! Place in the glass recycling bin. Glass is 100% recyclable infinitely with no quality loss — always worth recycling!' },
+  electronic: { keywords: ['computer','laptop','phone','keyboard','monitor','television','camera','electronic','device','screen','cable','charger','tablet'], color: '#00e5ff', emoji: '💻', msg: 'E-waste detected! Take to a designated e-waste collection point. Electronics contain toxic metals — never throw them in regular bins!' },
+  clothing: { keywords: ['shirt','clothing','shoe','cloth','fabric','textile','sweater','jacket','pants','dress','socks'], color: '#ff80ab', emoji: '👕', msg: 'Textile waste detected! Donate if wearable, or take to a textile recycling point. Fast fashion is a major environmental issue.' },
+  general: { keywords: [], color: '#a5d6a7', emoji: '🗑️', msg: 'Unrecognized waste detected. When unsure, separate into general waste and take it to your school\'s waste sorting station for proper classification.' }
+};
+
+function classifyLabels(predictions) {
+  const text = predictions.map(p => p.className.toLowerCase()).join(' ');
+  for (const [type, data] of Object.entries(wasteMap)) {
+    if (type === 'general') continue;
+    if (data.keywords.some(kw => text.includes(kw))) return type;
+  }
+  return 'general';
+}
+
+async function loadModel() {
+  if (tfModel) return tfModel;
+  if (modelLoading) return null;
+  modelLoading = true;
+  document.getElementById('aiLoadingText').style.display = 'block';
+  try {
+    tfModel = await mobilenet.load();
+    document.getElementById('aiLoadingText').style.display = 'none';
+    return tfModel;
+  } catch (e) {
+    document.getElementById('aiLoadingText').style.display = 'none';
+    modelLoading = false;
+    return null;
+  }
+}
+
+function handleDragOver(e) { e.preventDefault(); document.getElementById('uploadZone').classList.add('drag'); }
+function handleDragLeave() { document.getElementById('uploadZone').classList.remove('drag'); }
+function handleDrop(e) {
+  e.preventDefault(); handleDragLeave();
+  const f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith('image/')) handleFile(f);
+}
+
+function handleFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = document.getElementById('scanImg');
+    img.src = e.target.result;
+    const sc = document.getElementById('scanContainer');
+    sc.style.display = 'block';
+    document.getElementById('scanLine').style.display = 'block';
+    document.getElementById('scanOverlay').style.display = 'flex';
+    document.getElementById('scanPlaceholder').style.display = 'none';
+    document.getElementById('resultCard').style.display = 'none';
+    document.getElementById('uploadZone').classList.add('scanning');
+    img.onload = () => runAI(img);
+  };
+  reader.readAsDataURL(file);
+}
+
+async function runAI(imgEl) {
+  const model = await loadModel();
+  if (!model) { runHeuristicAnalysis(imgEl); return; }
+  try {
+    const predictions = await model.classify(imgEl);
+    const wasteType = classifyLabels(predictions);
+    const conf = Math.round(predictions[0].probability * 100);
+    showResult(wasteType, Math.max(conf, 72), predictions[0].className);
+  } catch (err) { runHeuristicAnalysis(imgEl); }
+}
+
+function runHeuristicAnalysis(imgEl) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 64; canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(imgEl, 0, 0, 64, 64);
+  const data = ctx.getImageData(0, 0, 64, 64).data;
+  let r = 0, g = 0, b = 0;
+  for (let i = 0; i < data.length; i += 4) { r += data[i]; g += data[i+1]; b += data[i+2]; }
+  const px = data.length / 4;
+  r /= px; g /= px; b /= px;
+  let type = 'general';
+  if (g > r && g > b) type = 'food';
+  else if (r > 150 && g > 100 && b < 80) type = 'food';
+  else if (r > g && r > b && r > 140) type = 'plastic';
+  else if (Math.abs(r-g) < 30 && Math.abs(g-b) < 30 && r > 160) type = 'paper';
+  else if (r < 80 && g < 80 && b < 80) type = 'electronic';
+  else type = 'plastic';
+  showResult(type, Math.floor(Math.random()*15+72), 'visual analysis');
+}
+
+function showResult(type, conf, rawLabel) {
+  document.getElementById('scanLine').style.display = 'none';
+  document.getElementById('scanOverlay').style.display = 'none';
+  document.getElementById('uploadZone').classList.remove('scanning', 'drag');
+  const data = wasteMap[type];
+  const rc = document.getElementById('resultCard');
+  rc.style.display = 'block';
+  rc.innerHTML = `
+    <div class="waste-type-label">Detected Waste Type</div>
+    <div class="waste-type" style="color:${data.color}">${data.emoji} ${type.charAt(0).toUpperCase()+type.slice(1)} Waste</div>
+    <div style="font-size:11px;color:var(--fg2);margin-bottom:4px">AI detected: "${rawLabel}"</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+      <div style="flex:1"><div class="confidence-bar-wrap"><div class="confidence-bar" id="confBar"></div></div></div>
+      <div style="font-size:13px;font-weight:600;color:var(--g2)" id="confText">0%</div>
+    </div>
+    <div class="ai-chat">
+      <div class="ai-avatar-row"><div class="ai-avatar">🤖</div><div><div class="ai-name">Viridion AI</div></div></div>
+      <div class="ai-message">${data.msg}</div>
+    </div>
+    <div class="xp-section">
+      <div class="xp-label"><span>Your XP Progress</span><span style="color:var(--g2)">450/1000 XP</span></div>
+      <div class="confidence-bar-wrap"><div class="confidence-bar" style="width:45%"></div></div>
+      <div style="font-size:11px;color:var(--fg2);margin-top:4px">Level 3 Explorer · Scan more to level up!</div>
+    </div>`;
+  rc.style.animation = 'none';
+  requestAnimationFrame(() => rc.style.animation = 'scaleIn .4s ease');
+  setTimeout(() => {
+    const cb = document.getElementById('confBar');
+    if (cb) { cb.style.width = conf + '%'; document.getElementById('confText').textContent = conf + '%'; }
+  }, 100);
+  addCoins(10);
+  showNotif(`🤖 AI detected: ${type} waste! +10 coins`);
+}
+
+setTimeout(loadModel, 2000);
+
+// ══════════════════════════════════════════════════
+// LEAFLET MAP
+// ══════════════════════════════════════════════════
+function initMap(lat, lng) {
+  if (leafletMap) return;
+  leafletMap = L.map('leaflet-map').setView([lat, lng], 16);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© OpenStreetMap © CARTO', maxZoom: 20
+  }).addTo(leafletMap);
+
+  const initialPins = [
+    { lat: lat + 0.0003, lng: lng - 0.0006, type: 'dirty', label: 'Cafeteria exit', desc: 'Plastic bottles and food wrappers' },
+    { lat: lat - 0.0002, lng: lng + 0.0004, type: 'clean', label: 'East hallway', desc: 'Cleaned yesterday by eco team' },
+    { lat: lat + 0.0005, lng: lng + 0.0002, type: 'dirty', label: 'Sports field corner', desc: 'Empty cups and snack bags' },
+    { lat: lat - 0.0004, lng: lng - 0.0003, type: 'clean', label: 'Main entrance', desc: 'Recently cleaned, good standing' },
+    { lat: lat + 0.0001, lng: lng + 0.0007, type: 'dirty', label: 'Parking lot', desc: 'Needs urgent attention' },
+    { lat: lat - 0.0005, lng: lng + 0.0001, type: 'clean', label: 'Library area', desc: 'Volunteers cleaned on Monday' },
+    { lat: lat + 0.0006, lng: lng - 0.0002, type: 'dirty', label: 'Back alley', desc: 'Old newspapers and cardboard' },
+  ];
+  initialPins.forEach(p => addMapPin(p.lat, p.lng, p.type, p.label, p.desc));
+
+  leafletMap.on('click', e => {
+    const type = Math.random() > .5 ? 'dirty' : 'clean';
+    addMapPin(e.latlng.lat, e.latlng.lng, type, type === 'dirty' ? 'New Report' : 'New Clean Spot', 'User reported');
+    showNotif(type === 'dirty' ? '📍 Dirty spot added! +5 coins' : '✅ Clean spot marked! +5 coins');
+    addCoins(5);
+  });
+}
+
+function createPinIcon(type) {
+  return L.divIcon({
+    className: '',
+    html: `<div style="width:28px;height:28px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${type==='dirty'?'#ff5252':'#00c853'};box-shadow:0 0 14px ${type==='dirty'?'rgba(255,82,82,.6)':'rgba(0,200,83,.6)'};display:flex;align-items:center;justify-content:center"><span style="transform:rotate(45deg);font-size:12px">${type==='dirty'?'⚠️':'✅'}</span></div>`,
+    iconSize: [28, 28], iconAnchor: [14, 28]
+  });
+}
+
+function addMapPin(lat, lng, type, label, desc) {
+  const marker = L.marker([lat, lng], { icon: createPinIcon(type) }).addTo(leafletMap);
+  const pinData = { marker, type, label, desc };
+  mapPins.push(pinData);
+  marker.bindPopup(`
+    <div class="popup-title">${label}</div>
+    <div class="popup-status" style="color:${type==='clean'?'#00e676':'#ff5252'}">${type==='clean'?'✅ Cleaned':'🔴 Needs attention'}</div>
+    <div style="font-size:12px;color:#a5d6a7;margin-bottom:10px">${desc}</div>
+    <div class="popup-btns">
+      <button class="popup-btn" onclick="markPinCleaned(this,${mapPins.length-1})">✅ Mark Clean</button>
+      <button class="popup-btn" onclick="showNotif('❤️ +1 coin for engagement!');addCoins(1)">❤️ Like</button>
+    </div>`, { closeButton: false });
+  updateMapCounts();
+}
+
+function markPinCleaned(btn, idx) {
+  if (idx >= mapPins.length) return;
+  const pin = mapPins[idx];
+  if (pin.type === 'dirty') {
+    pin.type = 'clean';
+    pin.marker.setIcon(createPinIcon('clean'));
+    addCoins(15);
+    showNotif(`🌱 ${pin.label} marked as cleaned! +15 coins`);
+    btn.textContent = '✅ Done!';
+    updateMapCounts();
+  }
+}
+
+function updateMapCounts() {
+  const dc = mapPins.filter(p => p.type === 'dirty').length;
+  const cc = mapPins.filter(p => p.type === 'clean').length;
+  document.getElementById('dirtyCount').textContent = dc;
+  document.getElementById('cleanCount').textContent = cc;
+}
+
+function addDirtyPin() {
+  if (!leafletMap) { showNotif('📡 Allow location first!'); locateMe(); return; }
+  const c = leafletMap.getCenter();
+  addMapPin(c.lat + (Math.random()-.5)*.001, c.lng + (Math.random()-.5)*.001, 'dirty', 'New Dirty Spot', 'User reported');
+  showNotif('📍 Dirty spot reported! +5 coins'); addCoins(5);
+}
+
+function addCleanPin() {
+  if (!leafletMap) { showNotif('📡 Allow location first!'); locateMe(); return; }
+  const c = leafletMap.getCenter();
+  addMapPin(c.lat + (Math.random()-.5)*.001, c.lng + (Math.random()-.5)*.001, 'clean', 'New Clean Spot', 'Just cleaned');
+  showNotif('✅ Clean spot added! +5 coins'); addCoins(5);
+}
+
+function locateMe() {
+  if (!navigator.geolocation) { initMap(47.9184, 106.9177); return; }
+  navigator.geolocation.getCurrentPosition(
+    pos => { initMap(pos.coords.latitude, pos.coords.longitude); showNotif('📡 Located! Map centered on you.'); },
+    () => { initMap(47.9184, 106.9177); showNotif('📍 Using default location (Ulaanbaatar)'); }
+  );
+}
+
+const mapObs = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting && !leafletMap) { locateMe(); mapObs.unobserve(e.target); } });
+}, { threshold: .2 });
+mapObs.observe(document.getElementById('leaflet-map'));
+
+// ══════════════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════════════
+const chartData = [
+  { label: 'Mon', val: 42 }, { label: 'Tue', val: 65 }, { label: 'Wed', val: 38 },
+  { label: 'Thu', val: 88 }, { label: 'Fri', val: 52 }, { label: 'Sat', val: 20 }, { label: 'Sun', val: 35 }
+];
+const maxVal = Math.max(...chartData.map(d => d.val));
+const chartEl = document.getElementById('barChart');
+chartData.forEach(d => {
+  const b = document.createElement('div');
+  b.className = 'bar'; b.style.height = '0px';
+  b.innerHTML = `<div class="bar-val">${d.val}</div><span class="bar-label">${d.label}</span>`;
+  chartEl.appendChild(b);
+  setTimeout(() => { b.style.height = (d.val / maxVal * 180) + 'px'; }, 600);
+});
+
+const sciObs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const score = 74;
+      const circumference = 2 * Math.PI * 72;
+      const offset = circumference - (circumference * score / 100);
+      document.getElementById('sciProgress').style.strokeDasharray = circumference;
+      document.getElementById('sciProgress').style.strokeDashoffset = circumference;
+      setTimeout(() => {
+        document.getElementById('sciProgress').style.strokeDashoffset = offset;
+        animCounter(document.getElementById('sciNum'), score, 1800);
+      }, 200);
+      sciObs.unobserve(e.target);
+    }
+  });
+}, { threshold: .3 });
+sciObs.observe(document.getElementById('sciProgress'));
+
+const dsObs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      animCounter(document.getElementById('ds1'), 284);
+      animCounter(document.getElementById('ds2'), 67);
+      animCounter(document.getElementById('ds3'), 142);
+      dsObs.unobserve(e.target);
+    }
+  });
+}, { threshold: .3 });
+dsObs.observe(document.getElementById('ds1'));
+
+function updateSimulator(val) {
+  document.getElementById('sliderVal').textContent = val + '%';
+  document.getElementById('simSave').textContent = Math.round(val * .6) + 'kg';
+  document.getElementById('simCO2').textContent = Math.round(val * .4) + 'kg';
+  document.getElementById('simCoins').textContent = Math.round(val * 12);
+}
+
+// ══════════════════════════════════════════════════
+// COMMUNITY
+// ══════════════════════════════════════════════════
+let posts = [
+  { avatar: 'A', name: 'Amara T.', time: '2h ago', text: 'Just organized a cleanup at our school cafeteria! We collected 3kg of plastic in 30 mins. 🌿 Every little bit counts!', emoji: '🌿', likes: 24, liked: false, img: null },
+  { avatar: 'J', name: 'Jin Park', time: '5h ago', text: 'Used the AI scanner today and it detected paper waste I thought was trash. Now I know to recycle it! +10 coins 🪙', emoji: '♻️', likes: 18, liked: false, img: null },
+  { avatar: 'S', name: 'Sofia M.', time: '1d ago', text: 'Our class reduced food waste by 40% this week by planning better lunches. The dashboard shows it clearly! 📊', emoji: '🍃', likes: 35, liked: false, img: null },
+  { avatar: 'K', name: 'Kiran B.', time: '1d ago', text: 'Planted 5 new trees in the school garden using our coin rewards! The shop feature is amazing. Keep scanning! 🌳', emoji: '🌳', likes: 42, liked: false, img: null },
+];
+
+function switchTab(tab) {
+  document.querySelectorAll('.comm-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  event.target.classList.add('active');
+  if (tab === 'feed') renderPosts();
+}
+
+let postImageData = null;
+function previewPostImage(input) {
+  if (!input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    postImageData = e.target.result;
+    document.getElementById('postImagePreview').style.display = 'block';
+    document.getElementById('postPreviewImg').src = e.target.result;
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+function renderPosts() {
+  const grid = document.getElementById('postsGrid');
+  grid.innerHTML = '';
+  posts.forEach((p, i) => {
+    const card = document.createElement('div');
+    card.className = 'glass-card post-card';
+    const imgHTML = p.img
+      ? `<div class="post-img-wrap"><img src="${p.img}" alt="post"></div>`
+      : `<div class="post-img-wrap">${p.emoji}</div>`;
+    card.innerHTML = `
+      ${imgHTML}
+      <div class="post-author">
+        <div class="post-avatar">${p.avatar}</div>
+        <div><div class="post-name">${p.name}</div><div class="post-time">${p.time}</div></div>
+      </div>
+      <div class="post-text">${p.text}</div>
+      <div class="post-actions">
+        <button class="post-btn${p.liked?' liked':''}" onclick="likePost(${i})"><span class="heart-anim">❤️</span> ${p.likes}</button>
+        <button class="post-btn" onclick="showNotif('💬 Comments feature coming soon!')">💬 Comment</button>
+        <button class="post-btn" onclick="showNotif('🔗 Link copied to clipboard!')">🔗 Share</button>
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+
+function likePost(idx) {
+  if (posts[idx].liked) { posts[idx].liked = false; posts[idx].likes--; addCoins(-1); }
+  else { posts[idx].liked = true; posts[idx].likes++; addCoins(1); }
+  renderPosts();
+}
+
+function addPost() {
+  const val = document.getElementById('postInput').value.trim();
+  if (!val) { showNotif('✏️ Write something first!'); return; }
+  const authorName = currentUser ? currentUser.name : 'You';
+  const authorAvatar = currentUser ? currentUser.avatar : 'Y';
+  posts.unshift({ avatar: authorAvatar, name: authorName, time: 'Just now', text: val, emoji: '🌿', likes: 0, liked: false, img: postImageData });
+  document.getElementById('postInput').value = '';
+  postImageData = null;
+  document.getElementById('postImagePreview').style.display = 'none';
+  addCoins(10);
+  showNotif('🌿 Post shared! +10 coins earned!');
+  switchTab('feed');
+  document.querySelectorAll('.comm-tab')[1].click();
+}
+
+renderPosts();
+
+// ══════════════════════════════════════════════════
+// DONATION
+// ══════════════════════════════════════════════════
+function selectAmount(btn, amount) {
+  document.querySelectorAll('.amount-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  donationAmount = amount;
+  document.getElementById('customAmountWrap').style.display = amount === 'custom' ? 'block' : 'none';
+  updateDonationImpact();
+}
+function selectDest(btn, dest) {
+  document.querySelectorAll('.dest-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  donationDest = dest;
+  updateDonationImpact();
+}
+function selectPurpose(btn, purpose) {
+  document.querySelectorAll('.purpose-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  donationPurpose = purpose;
+  updateDonationImpact();
+}
+function updateDonationImpact() {
+  const amt = donationAmount === 'custom'
+    ? (parseInt(document.getElementById('customAmount').value) || 0)
+    : donationAmount;
+  document.getElementById('impactText').textContent = `Your ₮${amt.toLocaleString()} donation helps provide ${donationPurpose} for a ${donationDest}`;
+  const pct = Math.min((amt / 500000) * 100 + 32, 95);
+  document.getElementById('impactBar').style.width = pct + '%';
+}
+
+function processDonation() {
+  const amt = donationAmount === 'custom'
+    ? (parseInt(document.getElementById('customAmount').value) || 0)
+    : donationAmount;
+  if (!amt || amt <= 0) { showNotif('💰 Please enter a valid amount!'); return; }
+  for (let i = 0; i < 6; i++) {
+    setTimeout(() => {
+      const c = document.createElement('div');
+      c.className = 'coins-anim';
+      c.style.cssText = `left:${40+Math.random()*20}%;top:70%;font-size:24px`;
+      c.textContent = '🪙';
+      document.body.appendChild(c);
+      setTimeout(() => c.remove(), 1400);
+    }, i * 150);
+  }
+  showNotif(`💚 Thank you! ₮${amt.toLocaleString()} donated for ${donationPurpose} at a ${donationDest}!`, 4000);
+}
+
+// ══════════════════════════════════════════════════
+// SHOP
+// ══════════════════════════════════════════════════
+const shopItems = [
+  { emoji: '🌱', name: 'Seedling Kit', cost: 80, desc: 'Plant your own tree' },
+  { emoji: '♻️', name: 'Recycling Bin', cost: 150, desc: 'Mini desk organizer' },
+  { emoji: '🧹', name: 'Cleaning Kit', cost: 100, desc: 'Eco cleaning supplies' },
+  { emoji: '🌻', name: 'Sunflower Seeds', cost: 50, desc: 'Grow in school garden' },
+  { emoji: '💚', name: 'Eco Badge', cost: 40, desc: 'Display your eco rank' },
+  { emoji: '🎒', name: 'Reusable Bag', cost: 120, desc: 'No more plastic bags' },
+];
+
+function renderShop() {
+  const grid = document.getElementById('shopGrid');
+  grid.innerHTML = '';
+  shopItems.forEach((item, i) => {
+    const affordable = coins >= item.cost;
+    const card = document.createElement('div');
+    card.className = `glass-card shop-item${affordable ? ' affordable' : ''}`;
+    card.innerHTML = `
+      <div class="shop-emoji">${item.emoji}</div>
+      <div class="shop-name">${item.name}</div>
+      <div style="font-size:11px;color:var(--fg2);margin-bottom:4px">${item.desc}</div>
+      <div class="shop-cost">🪙 ${item.cost} coins</div>
+      <button class="shop-btn" onclick="buyItem(${i})">${affordable ? 'Unlock 🔓' : 'Need more coins'}</button>`;
+    grid.appendChild(card);
+  });
+}
+
+function buyItem(i) {
+  const item = shopItems[i];
+  if (coins < item.cost) { showNotif(`🪙 Need ${item.cost - coins} more coins for ${item.name}!`); return; }
+  coins -= item.cost;
+  document.getElementById('coinDisplay').textContent = coins;
+  document.getElementById('walletCoins').textContent = coins;
+  showNotif(`${item.emoji} ${item.name} unlocked! Enjoy your reward!`);
+  renderShop();
+}
+
+function updateShopAffordability() { renderShop(); }
+renderShop();
+
+// ══════════════════════════════════════════════════
+// PARALLAX
+// ══════════════════════════════════════════════════
+window.addEventListener('scroll', () => {
+  const y = window.scrollY;
+  const heroBg = document.querySelector('.hero-bg');
+  if (heroBg) heroBg.style.transform = `translateY(${y * .28}px)`;
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    closeLogin();
+    if (chatOpen) toggleChat();
+  }
+});
+</script>
+</body>
+</html>
